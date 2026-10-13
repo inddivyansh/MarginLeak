@@ -1,0 +1,153 @@
+import React, { useState } from 'react';
+import { LineMatch } from '../api/client';
+import { Check, HelpCircle, AlertCircle, Link2, Unlink } from 'lucide-react';
+
+interface ReconciliationTableViewProps {
+  matches: LineMatch[];
+  onCorrectMatch: (matchId: string, poLineId?: string, markUnmatched?: boolean) => Promise<void>;
+}
+
+export const ReconciliationTableView: React.FC<ReconciliationTableViewProps> = ({ matches, onCorrectMatch }) => {
+  const [selectedMatch, setSelectedMatch] = useState<LineMatch | null>(null);
+
+  const getMethodBadge = (method: string) => {
+    switch (method) {
+      case 'exact_sku':
+        return <span className="badge badge-success">Exact SKU (100%)</span>;
+      case 'supplier_alias':
+        return <span className="badge badge-info">Supplier Alias</span>;
+      case 'model_normalization':
+        return <span className="badge badge-tinker">Tinker LoRA</span>;
+      case 'fuzzy_token':
+        return <span className="badge badge-warning">Fuzzy Token</span>;
+      default:
+        return <span className="badge badge-danger">Unmatched</span>;
+    }
+  };
+
+  return (
+    <div className="glass-panel" style={{ padding: '1.5rem' }}>
+      <div style={{ marginBottom: '1.25rem' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Line-by-Line Accounts Payable Reconciliation</h3>
+        <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>
+          Detailed mapping comparing raw invoice lines against authorized purchase order lines.
+        </p>
+      </div>
+
+      <div className="table-container">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Line</th>
+              <th>Billed Invoice Line</th>
+              <th>Matched Purchase Order Line</th>
+              <th>Method & Confidence</th>
+              <th>Variance</th>
+              <th>Review</th>
+            </tr>
+          </thead>
+          <tbody>
+            {matches.map((m) => {
+              const inv = m.invoice_line;
+              const po = m.po_line;
+              const priceDiff = inv && po ? inv.unit_price - po.unit_price : 0;
+              const qtyDiff = inv && po ? inv.quantity - po.quantity : 0;
+              const hasDiff = priceDiff > 0.01 || qtyDiff > 0.01;
+
+              return (
+                <tr key={m.id}>
+                  <td style={{ fontWeight: 700, color: 'var(--text-subtle)' }}>
+                    #{inv?.line_number || '-'}
+                  </td>
+
+                  {/* Invoice Line */}
+                  <td>
+                    <div style={{ fontWeight: 600, color: '#f8fafc' }}>{inv?.description || 'Unknown'}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
+                      SKU: {inv?.sku || 'None'} | {inv?.quantity} {inv?.unit} @ ${inv?.unit_price?.toFixed(2)} = ${inv?.total_price?.toFixed(2)}
+                    </div>
+                  </td>
+
+                  {/* PO Line */}
+                  <td>
+                    {po ? (
+                      <>
+                        <div style={{ fontWeight: 600, color: '#cbd5e1' }}>{po.description}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
+                          SKU: {po.sku || 'None'} | Auth: {po.quantity} {po.unit} @ ${po.unit_price?.toFixed(2)}
+                        </div>
+                      </>
+                    ) : (
+                      <span style={{ color: 'var(--danger)', fontSize: '0.85rem', fontWeight: 600 }}>
+                        No Matched PO Line
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Method & Confidence */}
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                      {getMethodBadge(m.method)}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{
+                          flex: 1,
+                          height: '4px',
+                          background: 'rgba(255,255,255,0.1)',
+                          borderRadius: '2px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            width: `${Math.round(m.confidence * 100)}%`,
+                            height: '100%',
+                            background: m.confidence > 0.8 ? '#10b981' : (m.confidence > 0.6 ? '#f59e0b' : '#f43f5e')
+                          }} />
+                        </div>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-subtle)' }}>
+                          {Math.round(m.confidence * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Variance */}
+                  <td>
+                    {hasDiff ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                        {priceDiff > 0.01 && (
+                          <span style={{ color: 'var(--danger)', fontSize: '0.8rem', fontWeight: 700 }}>
+                            +${priceDiff.toFixed(2)}/unit
+                          </span>
+                        )}
+                        {qtyDiff > 0.01 && (
+                          <span style={{ color: 'var(--warning)', fontSize: '0.8rem', fontWeight: 700 }}>
+                            +{qtyDiff} units
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span style={{ color: 'var(--success)', fontSize: '0.8rem', fontWeight: 600 }}>
+                        Exact
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Action */}
+                  <td>
+                    <button
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => onCorrectMatch(m.id, undefined, true)}
+                      title="Unlink this match if incorrect"
+                    >
+                      <Unlink size={13} />
+                      <span>Unlink</span>
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
