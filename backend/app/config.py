@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str = "sqlite:///./marginleak.db"
     tinker_api_key: Optional[str] = None
+    tinker_model_path: Optional[str] = None
     backboard_api_key: Optional[str] = None
     tabpfn_enabled: bool = False
     default_currency: str = "USD"

@@ -36,6 +36,8 @@ def create_reconciliation(req: ReconciliationCreateRequest, db: Session = Depend
             PurchaseOrder.id == req.purchase_order_id,
             PurchaseOrder.workspace_id == req.workspace_id,
         ).first()
+        if not po:
+            raise HTTPException(status_code=404, detail="Purchase order not found in workspace.")
 
     # 3. Load Invoice Lines
     invoice_lines = [
@@ -176,30 +178,34 @@ def create_reconciliation(req: ReconciliationCreateRequest, db: Session = Depend
 
 
 @router.get("/reconciliations", response_model=List[ReconciliationResponse])
-def list_reconciliations(workspace_id: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(Reconciliation)
-    if workspace_id:
-        query = query.filter(Reconciliation.workspace_id == workspace_id)
+def list_reconciliations(workspace_id: str, db: Session = Depends(get_db)):
+    query = db.query(Reconciliation).filter(Reconciliation.workspace_id == workspace_id)
     return query.order_by(Reconciliation.created_at.desc()).all()
 
 
 @router.get("/reconciliations/{id}", response_model=ReconciliationResponse)
-def get_reconciliation(id: str, db: Session = Depends(get_db)):
-    recon = db.query(Reconciliation).filter(Reconciliation.id == id).first()
+def get_reconciliation(id: str, workspace_id: str, db: Session = Depends(get_db)):
+    recon = db.query(Reconciliation).filter(Reconciliation.id == id, Reconciliation.workspace_id == workspace_id).first()
     if not recon:
         raise HTTPException(status_code=404, detail="Reconciliation not found.")
     return recon
 
 
 @router.get("/reconciliations/{id}/findings", response_model=List[FindingResponse])
-def list_findings(id: str, db: Session = Depends(get_db)):
-    findings = db.query(Finding).filter(Finding.reconciliation_id == id).order_by(Finding.amount_at_risk.desc()).all()
+def list_findings(id: str, workspace_id: str, db: Session = Depends(get_db)):
+    recon = db.query(Reconciliation).filter(
+        Reconciliation.id == id,
+        Reconciliation.workspace_id == workspace_id,
+    ).first()
+    if not recon:
+        raise HTTPException(status_code=404, detail="Reconciliation not found.")
+    findings = db.query(Finding).join(Reconciliation).filter(Finding.reconciliation_id == id, Reconciliation.workspace_id == workspace_id).order_by(Finding.amount_at_risk.desc()).all()
     return findings
 
 
 @router.patch("/findings/{id}", response_model=FindingResponse)
-def update_finding(id: str, update: FindingUpdate, db: Session = Depends(get_db)):
-    finding = db.query(Finding).filter(Finding.id == id).first()
+def update_finding(id: str, update: FindingUpdate, workspace_id: str, db: Session = Depends(get_db)):
+    finding = db.query(Finding).join(Reconciliation).filter(Finding.id == id, Reconciliation.workspace_id == workspace_id).first()
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found.")
 
@@ -223,8 +229,8 @@ def update_finding(id: str, update: FindingUpdate, db: Session = Depends(get_db)
 
 
 @router.get("/findings/{id}/dispute-draft", response_model=DisputeDraftResponse)
-def get_dispute_draft(id: str, db: Session = Depends(get_db)):
-    finding = db.query(Finding).filter(Finding.id == id).first()
+def get_dispute_draft(id: str, workspace_id: str, db: Session = Depends(get_db)):
+    finding = db.query(Finding).join(Reconciliation).filter(Finding.id == id, Reconciliation.workspace_id == workspace_id).first()
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found.")
     if finding.status != "confirmed":
@@ -261,8 +267,8 @@ def get_dispute_draft(id: str, db: Session = Depends(get_db)):
 
 
 @router.patch("/line-matches/{id}")
-def correct_match(id: str, correction: MatchCorrectionUpdate, db: Session = Depends(get_db)):
-    match = db.query(LineMatch).filter(LineMatch.id == id).first()
+def correct_match(id: str, correction: MatchCorrectionUpdate, workspace_id: str, db: Session = Depends(get_db)):
+    match = db.query(LineMatch).join(Reconciliation).filter(LineMatch.id == id, Reconciliation.workspace_id == workspace_id).first()
     if not match:
         raise HTTPException(status_code=404, detail="Match not found.")
 
@@ -277,7 +283,7 @@ def correct_match(id: str, correction: MatchCorrectionUpdate, db: Session = Depe
 
         # Save SupplierItemAlias for future automatic matching
         inv_line = db.query(InvoiceLine).filter(InvoiceLine.id == match.invoice_line_id).first()
-        po_line = db.query(PurchaseOrderLine).filter(PurchaseOrderLine.id == correction.po_line_id).first()
+        po_line = db.query(PurchaseOrderLine).join(PurchaseOrder).filter(PurchaseOrderLine.id == correction.po_line_id, PurchaseOrder.workspace_id == workspace_id).first()
         if inv_line and po_line:
             recon = db.query(Reconciliation).filter(Reconciliation.id == match.reconciliation_id).first()
             inv = db.query(Invoice).filter(Invoice.id == inv_line.invoice_id).first()
@@ -299,8 +305,8 @@ def correct_match(id: str, correction: MatchCorrectionUpdate, db: Session = Depe
 
 
 @router.get("/reports/{reconciliation_id}.csv")
-def export_csv_report(reconciliation_id: str, db: Session = Depends(get_db)):
-    recon = db.query(Reconciliation).filter(Reconciliation.id == reconciliation_id).first()
+def export_csv_report(reconciliation_id: str, workspace_id: str, db: Session = Depends(get_db)):
+    recon = db.query(Reconciliation).filter(Reconciliation.id == reconciliation_id, Reconciliation.workspace_id == workspace_id).first()
     if not recon:
         raise HTTPException(status_code=404, detail="Reconciliation not found.")
 

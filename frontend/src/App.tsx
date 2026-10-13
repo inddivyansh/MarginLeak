@@ -35,15 +35,15 @@ export function App() {
       const ws = await api.getWorkspace();
       setWorkspace(ws);
 
-      const recons = await api.getReconciliations();
+      const recons = await api.getReconciliations(ws.id);
       setReconciliations(recons);
       if (recons.length > 0) {
-        const fullRecon = await api.getReconciliation(recons[0].id);
+        const fullRecon = await api.getReconciliation(recons[0].id, ws.id);
         setActiveRecon(fullRecon);
         setSupplierRisk(await api.getSupplierRisk(fullRecon.supplier_key, ws.id));
       }
 
-      const hist = await api.getPriceHistory();
+      const hist = await api.getPriceHistory(ws.id);
       setPriceHistory(hist);
 
       const bench = await api.getBenchmark();
@@ -72,10 +72,10 @@ export function App() {
 
   const handleUpdateFindingStatus = async (id: string, status: string, note?: string) => {
     try {
-      await api.updateFindingStatus(id, status, note);
+      await api.updateFindingStatus(id, status, workspace.id, note);
       showToast(`Finding marked as ${status.toUpperCase()}`);
       if (activeRecon) {
-        const updated = await api.getReconciliation(activeRecon.id);
+        const updated = await api.getReconciliation(activeRecon.id, workspace.id);
         setActiveRecon(updated);
       }
     } catch (e: any) {
@@ -85,10 +85,10 @@ export function App() {
 
   const handleCorrectMatch = async (matchId: string, poLineId?: string, markUnmatched?: boolean) => {
     try {
-      await api.correctLineMatch(matchId, poLineId, markUnmatched);
+      await api.correctLineMatch(matchId, workspace.id, poLineId, markUnmatched);
       showToast(markUnmatched ? 'Unlinked match from PO line' : 'Re-linked line match');
       if (activeRecon) {
-        const updated = await api.getReconciliation(activeRecon.id);
+        const updated = await api.getReconciliation(activeRecon.id, workspace.id);
         setActiveRecon(updated);
       }
     } catch (e: any) {
@@ -98,7 +98,7 @@ export function App() {
 
   const handleExportCsv = () => {
     if (!activeRecon) return;
-    window.location.href = api.getReportDownloadUrl(activeRecon.id);
+    window.location.href = api.getReportDownloadUrl(activeRecon.id, workspace.id);
   };
 
   return (
@@ -200,6 +200,7 @@ export function App() {
       {activeTab === 'exceptions' && (
         <DiscrepancyView
           findings={activeRecon?.findings || []}
+          workspaceId={workspace.id}
           onUpdateStatus={handleUpdateFindingStatus}
         />
       )}

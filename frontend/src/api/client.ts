@@ -121,18 +121,18 @@ export const api = {
     return res.json();
   },
 
-  async getReconciliations(): Promise<Reconciliation[]> {
-    const res = await fetch(`${API_BASE}/reconciliations`);
+  async getReconciliations(workspaceId: string): Promise<Reconciliation[]> {
+    const res = await fetch(`${API_BASE}/reconciliations?workspace_id=${encodeURIComponent(workspaceId)}`);
     return res.json();
   },
 
-  async getReconciliation(id: string): Promise<Reconciliation> {
-    const res = await fetch(`${API_BASE}/reconciliations/${id}`);
+  async getReconciliation(id: string, workspaceId: string): Promise<Reconciliation> {
+    const res = await fetch(`${API_BASE}/reconciliations/${id}?workspace_id=${encodeURIComponent(workspaceId)}`);
     return res.json();
   },
 
-  async updateFindingStatus(id: string, status: string, note?: string): Promise<Finding> {
-    const res = await fetch(`${API_BASE}/findings/${id}`, {
+  async updateFindingStatus(id: string, status: string, workspaceId: string, note?: string): Promise<Finding> {
+    const res = await fetch(`${API_BASE}/findings/${id}?workspace_id=${encodeURIComponent(workspaceId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: jsonBody({ status, note })
@@ -140,8 +140,8 @@ export const api = {
     return res.json();
   },
 
-  async correctLineMatch(id: string, poLineId?: string, markUnmatched = false, note?: string): Promise<any> {
-    const res = await fetch(`${API_BASE}/line-matches/${id}`, {
+  async correctLineMatch(id: string, workspaceId: string, poLineId?: string, markUnmatched = false, note?: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/line-matches/${id}?workspace_id=${encodeURIComponent(workspaceId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: jsonBody({ po_line_id: poLineId, mark_unmatched: markUnmatched, note })
@@ -149,8 +149,8 @@ export const api = {
     return res.json();
   },
 
-  async getPriceHistory(): Promise<HistoricalPriceItem[]> {
-    const res = await fetch(`${API_BASE}/history/prices`);
+  async getPriceHistory(workspaceId: string): Promise<HistoricalPriceItem[]> {
+    const res = await fetch(`${API_BASE}/history/prices?workspace_id=${encodeURIComponent(workspaceId)}`);
     return res.json();
   },
 
@@ -162,8 +162,8 @@ export const api = {
     return res.json();
   },
 
-  async getDisputeDraft(findingId: string): Promise<DisputeDraft> {
-    const res = await fetch(`${API_BASE}/findings/${findingId}/dispute-draft`);
+  async getDisputeDraft(findingId: string, workspaceId: string): Promise<DisputeDraft> {
+    const res = await fetch(`${API_BASE}/findings/${findingId}/dispute-draft?workspace_id=${encodeURIComponent(workspaceId)}`);
     if (!res.ok) {
       const error = await res.json().catch(() => ({ detail: 'Unable to generate dispute draft' }));
       throw new Error(error.detail || 'Unable to generate dispute draft');
@@ -222,6 +222,7 @@ export const api = {
   async confirmPo(data: {
     workspace_id: string;
     filename: string;
+    temp_key: string;
     po_number?: string;
     supplier_name?: string;
     currency?: string;
@@ -235,8 +236,8 @@ export const api = {
     return res.json();
   },
 
-  getReportDownloadUrl(reconciliationId: string): string {
-    return `${API_BASE}/reports/${reconciliationId}.csv`;
+  getReportDownloadUrl(reconciliationId: string, workspaceId: string): string {
+    return `${API_BASE}/reports/${reconciliationId}.csv?workspace_id=${encodeURIComponent(workspaceId)}`;
   }
 };
 

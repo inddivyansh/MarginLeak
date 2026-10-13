@@ -61,7 +61,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, works
     try {
       await api.confirmPo({
         workspace_id: workspaceId,
-        filename: poPreview.temp_key,
+        filename: poPreview.filename,
+        temp_key: poPreview.temp_key,
         po_number: poPreview.po_number,
         columns: poPreview.detected_columns
       });

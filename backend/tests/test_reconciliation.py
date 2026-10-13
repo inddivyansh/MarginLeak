@@ -90,8 +90,16 @@ def test_quantity_mismatch_rule():
     assert res["findings_count"] == 1
     finding = res["findings"][0]
     assert finding["type"] == "QUANTITY_MISMATCH"
-    # (120 - 100) * $10.00 = $200.00
-    assert finding["amount_at_risk"] == 200.00
+    assert finding["amount_at_risk"] == 0.0
+    assert finding["severity"] == "info"
+
+    confirmed = ReconciliationEngine.reconcile(
+        invoice_lines=invoice_lines,
+        po_lines=po_lines,
+        options={"quantity_check_confirmed": True},
+    )
+    # (120 - 100) * $10.00 = $200.00 when fulfillment is confirmed.
+    assert confirmed["findings"][0]["amount_at_risk"] == 200.00
 
 def test_duplicate_line_rule():
     invoice_lines = [

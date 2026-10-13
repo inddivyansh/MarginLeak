@@ -10,11 +10,10 @@ from backend.app.schemas import HistoricalPriceItem
 router = APIRouter(tags=["Price History"])
 
 @router.get("/history/prices", response_model=List[HistoricalPriceItem])
-def get_price_history(workspace_id: Optional[str] = None, supplier_key: Optional[str] = None, db: Session = Depends(get_db)):
+def get_price_history(workspace_id: str, supplier_key: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(InvoiceLine, Invoice).join(Invoice, InvoiceLine.invoice_id == Invoice.id)
 
-    if workspace_id:
-        query = query.filter(Invoice.workspace_id == workspace_id)
+    query = query.filter(Invoice.workspace_id == workspace_id)
     if supplier_key:
         query = query.filter(Invoice.supplier_key == supplier_key)
 

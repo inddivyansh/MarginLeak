@@ -18,6 +18,8 @@ services:
         value: "false"
       - key: TINKER_API_KEY
         sync: false
+      - key: TINKER_MODEL_PATH
+        sync: false
       - key: BACKBOARD_API_KEY
         sync: false
       - key: PRICE_TOLERANCE_PERCENT

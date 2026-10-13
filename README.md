@@ -180,11 +180,12 @@ MarginLeak includes a ready-to-use **`render.yaml`** blueprint for one-click dep
 4. Render will automatically build the React frontend and deploy the FastAPI web service!
 5. Add your environment variables:
   * `TINKER_API_KEY`: Thinking Machines Tinker API key, optional because the deterministic fallback remains available
+  * `TINKER_MODEL_PATH`: Saved Tinker sampler path from the LoRA training run; when set, live normalization uses this artifact
   * `BACKBOARD_API_KEY`: Optional Backboard integration key
   * `TABPFN_ENABLED`: Set to `true` only when the image includes `backend/requirements-tabpfn.txt`
   * `ENVIRONMENT`: `production`
 
-The Render blueprint uses the included Dockerfile and provisions a persistent PostgreSQL database. TabPFN remains disabled by default so the standard deployment stays lightweight; install `backend/requirements-tabpfn.txt` in a custom image when enabling it.
+The Render blueprint uses the included Dockerfile and provisions a persistent PostgreSQL database. TabPFN remains disabled by default so the standard deployment stays lightweight; install `backend/requirements-tabpfn.txt` in a custom image when enabling it. Set `TINKER_MODEL_PATH` after a successful training run to use the saved sampler artifact in production.
 
 ---
 

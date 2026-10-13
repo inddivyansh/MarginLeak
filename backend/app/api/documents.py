@@ -153,7 +153,11 @@ async def confirm_purchase_order(
     req: ColumnMappingRequest,
     db: Session = Depends(get_db)
 ):
-    temp_path = os.path.join(settings.upload_dir, req.filename)
+    temp_key = os.path.basename(req.temp_key)
+    temp_path = os.path.abspath(os.path.join(settings.upload_dir, temp_key))
+    upload_root = os.path.abspath(settings.upload_dir)
+    if not temp_key.startswith("temp_") or os.path.commonpath([temp_path, upload_root]) != upload_root:
+        raise HTTPException(status_code=400, detail="Invalid upload session key.")
     if not os.path.exists(temp_path):
         raise HTTPException(status_code=404, detail="Uploaded file session expired. Please re-upload.")
 
@@ -222,24 +226,18 @@ async def confirm_purchase_order(
 
 
 @router.get("/documents", response_model=List[DocumentResponse])
-def list_documents(workspace_id: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(Document)
-    if workspace_id:
-        query = query.filter(Document.workspace_id == workspace_id)
+def list_documents(workspace_id: str, db: Session = Depends(get_db)):
+    query = db.query(Document).filter(Document.workspace_id == workspace_id)
     return query.order_by(Document.created_at.desc()).all()
 
 
 @router.get("/invoices", response_model=List[InvoiceResponse])
-def list_invoices(workspace_id: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(Invoice)
-    if workspace_id:
-        query = query.filter(Invoice.workspace_id == workspace_id)
+def list_invoices(workspace_id: str, db: Session = Depends(get_db)):
+    query = db.query(Invoice).filter(Invoice.workspace_id == workspace_id)
     return query.order_by(Invoice.created_at.desc()).all()
 
 
 @router.get("/purchase-orders", response_model=List[PurchaseOrderResponse])
-def list_purchase_orders(workspace_id: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(PurchaseOrder)
-    if workspace_id:
-        query = query.filter(PurchaseOrder.workspace_id == workspace_id)
+def list_purchase_orders(workspace_id: str, db: Session = Depends(get_db)):
+    query = db.query(PurchaseOrder).filter(PurchaseOrder.workspace_id == workspace_id)
     return query.order_by(PurchaseOrder.created_at.desc()).all()

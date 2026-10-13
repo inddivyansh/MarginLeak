@@ -100,6 +100,7 @@ class InvoiceResponse(BaseModel):
 class ColumnMappingRequest(BaseModel):
     workspace_id: str
     filename: str
+    temp_key: str
     supplier_name: Optional[str] = None
     po_number: Optional[str] = None
     currency: str = "USD"
@@ -114,6 +115,7 @@ class ReconciliationCreateRequest(BaseModel):
         "historical_price_check": True,
         "price_tolerance_percent": 2.0,
         "historical_alert_percent": 5.0,
+        "quantity_check_confirmed": False,
         "use_model_normalization": True
     })
 

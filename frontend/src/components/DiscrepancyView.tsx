@@ -5,10 +5,11 @@ import { DisputeDraftModal } from './DisputeDraftModal';
 
 interface DiscrepancyViewProps {
   findings: Finding[];
+  workspaceId: string;
   onUpdateStatus: (id: string, status: string, note?: string) => Promise<void>;
 }
 
-export const DiscrepancyView: React.FC<DiscrepancyViewProps> = ({ findings, onUpdateStatus }) => {
+export const DiscrepancyView: React.FC<DiscrepancyViewProps> = ({ findings, workspaceId, onUpdateStatus }) => {
   const [filterType, setFilterType] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [dismissNoteId, setDismissNoteId] = useState<string | null>(null);
@@ -19,7 +20,7 @@ export const DiscrepancyView: React.FC<DiscrepancyViewProps> = ({ findings, onUp
   const handleDraft = async (findingId: string) => {
     setDraftLoadingId(findingId);
     try {
-      setDraft(await api.getDisputeDraft(findingId));
+      setDraft(await api.getDisputeDraft(findingId, workspaceId));
     } finally {
       setDraftLoadingId(null);
     }

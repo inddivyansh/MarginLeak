@@ -34,6 +34,7 @@ class ReconciliationEngine:
         hist_alert_pct = Decimal(str(opts.get("historical_alert_percent", 5.0)))
         check_history = opts.get("historical_price_check", True)
         use_model = opts.get("use_model_normalization", True)
+        quantity_check_confirmed = opts.get("quantity_check_confirmed", False)
 
         findings = []
         matches = []
@@ -230,10 +231,13 @@ class ReconciliationEngine:
                     "invoice_line_id": inv_line.get("id"),
                     "po_line_id": po_line.get("id"),
                     "type": "QUANTITY_MISMATCH",
-                    "severity": "warning",
-                    "amount_at_risk": float(extra_cost),
+                    "severity": "warning" if quantity_check_confirmed else "info",
+                    "amount_at_risk": float(extra_cost) if quantity_check_confirmed else 0.0,
                     "currency": currency,
-                    "explanation": f"Over-Quantity Invoiced: Invoiced for {q_inv:.0f} {inv_line.get('unit')} vs authorized PO quantity {q_po:.0f} (+{extra_qty:.0f} unapproved units). Value at risk: {currency} {extra_cost:.2f}.",
+                    "explanation": (
+                        f"Over-Quantity Invoiced: Invoiced for {q_inv:.0f} {inv_line.get('unit')} vs authorized PO quantity {q_po:.0f} (+{extra_qty:.0f} units). "
+                        + (f"Value at risk: {currency} {extra_cost:.2f}." if quantity_check_confirmed else "Fulfillment status is unknown; review before treating the difference as leakage.")
+                    ),
                     "evidence_json": {
                         "invoice_line_num": inv_line.get("line_number"),
                         "invoice_desc": inv_line.get("description"),
@@ -247,7 +251,8 @@ class ReconciliationEngine:
                         "po_unit_price": float(p_po),
                         "calculation_formula": f"({q_inv:.0f} - {q_po:.0f}) extra units × {currency} {p_po:.2f} = {currency} {extra_cost:.2f}",
                         "extra_quantity": float(extra_qty),
-                        "difference": float(extra_cost)
+                        "difference": float(extra_cost) if quantity_check_confirmed else 0.0,
+                        "quantity_review_required": not quantity_check_confirmed
                     },
                     "status": "open"
                 })
