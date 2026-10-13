@@ -62,18 +62,17 @@ Standardizes raw supplier descriptions into strict canonical JSON containing pro
 }
 ```
 
-### Reproducible Held-Out Benchmark Results (79 Samples)
+### Held-Out Benchmarking
 
-| Metric | Baseline A (Deterministic Regex & Fuzzy) | Baseline B (Base Qwen3-8B Zero-Shot) | Candidate C (Tinker LoRA Fine-Tuned) |
-| :--- | :---: | :---: | :---: |
-| **Exact Structured Field Accuracy** | 62.7% | 76.8% | **93.6% (+16.8 pts)** |
-| **JSON Validity Rate** | 100.0% | 87.2% | **99.6% (+12.4 pts)** |
-| **False-Merge Rate** | 8.8% | 11.4% | **1.6% (-86.0% error drop)** |
-| **Match Precision** | 82.5% | 84.5% | **96.8%** |
-| **P50 Latency** | 2.4 ms | 315 ms | **290 ms** |
-| **Cost per 1,000 Lines** | $0.00 | $0.42 | **$0.38** |
+The benchmark runner measures the deterministic fallback locally and evaluates base and LoRA models only when real Tinker model artifacts are supplied. It writes measured results to `tinker_experiment/benchmark_results.json`; unavailable model metrics are recorded as `not_run`, never estimated.
 
-*All benchmark scripts, training datasets, and evaluation artifacts are versioned in `tinker_experiment/`.*
+Run the deterministic report:
+
+```bash
+python tinker_experiment/run_benchmark.py
+```
+
+After training and saving a Tinker sampler artifact, pass `--base-model`, `--tinker-model-path`, and `TINKER_API_KEY` to measure model comparisons.
 
 ---
 

@@ -1,20 +1,11 @@
-"""
-Tinker Supervised LoRA Fine-Tuning Script
-Platform: Thinking Machines Lab (Tinker API)
-Model: Qwen/Qwen3-8B (or thinkingmachines/Inkling-Small)
-Challenge: Hacktoberfest 2026 — Best Use of Thinking Machines Tinker ($200)
+"""Run real supervised LoRA fine-tuning through the Thinking Machines Tinker SDK."""
 
-Usage:
-    python train_tinker_lora.py --smoke-test
-    python train_tinker_lora.py --epochs 3 --lr 2e-4
-"""
-
+import argparse
+import json
+import logging
 import os
 import sys
-import json
-import argparse
-import logging
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("TinkerTrainer")
@@ -24,103 +15,116 @@ You extract the true product identity, pack quantity, pack unit, size, and attri
 Never invent information. If an attribute is ambiguous or missing, do not guess; record it in uncertain_fields.
 Output ONLY a valid JSON object matching the requested schema."""
 
+
 def load_jsonl(filepath: str) -> List[Dict[str, Any]]:
-    items = []
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            if line.strip():
-                items.append(json.loads(line.strip()))
-    return items
+    with open(filepath, "r", encoding="utf-8") as handle:
+        return [json.loads(line) for line in handle if line.strip()]
 
-def format_training_example(example: Dict[str, Any]) -> str:
+
+def format_prompt(example: Dict[str, Any]) -> str:
     inp = example["input"]
-    target_json = json.dumps(example["target"], indent=2)
-    prompt = (
+    return (
         f"{SYSTEM_PROMPT}\n\n"
-        f"Normalize the following supplier line-item description into structured canonical JSON:\n\n"
-        f"Supplier Description: \"{inp['supplier_description']}\"\n"
-        f"Supplier SKU: {inp.get('supplier_sku') or 'None'}\n\n"
-        f"Output strictly in JSON format:\n{target_json}"
+        "Normalize the following supplier line-item description into structured canonical JSON:\n\n"
+        f"Supplier Description: {json.dumps(inp['supplier_description'])}\n"
+        f"Supplier SKU: {json.dumps(inp.get('supplier_sku'))}\n\n"
+        "Output strictly in JSON format:\n"
     )
-    return prompt
 
-def run_training():
-    parser = argparse.ArgumentParser(description="Tinker LoRA Fine-Tuning for MarginLeak")
-    parser.add_argument("--smoke-test", action="store_true", help="Run 2-step verification smoke test")
-    parser.add_argument("--model", type=str, default="Qwen/Qwen3-8B", help="Base model identifier")
-    parser.add_argument("--epochs", type=int, default=2, help="Number of training epochs")
-    parser.add_argument("--lora-rank", type=int, default=16, help="LoRA adaptation rank")
-    parser.add_argument("--lr", type=float, default=2e-4, help="Learning rate")
+
+def make_datum(tinker_module: Any, tokenizer: Any, example: Dict[str, Any]) -> Any:
+    prompt_tokens = tokenizer.encode(format_prompt(example))
+    target_tokens = tokenizer.encode(json.dumps(example["target"], separators=(",", ":")))
+    tokens = prompt_tokens + target_tokens
+    weights = [0.0] * len(prompt_tokens) + [1.0] * len(target_tokens)
+    return tinker_module.types.Datum(
+        model_input=tinker_module.types.ModelInput.from_ints(tokens),
+        loss_fn_inputs={
+            "target_tokens": tinker_module.types.ModelInput.from_ints(tokens),
+            "weights": tinker_module.types.TensorData(
+                data=weights, dtype="float32", shape=[len(weights)]
+            ),
+        },
+    )
+
+
+def run_training() -> None:
+    parser = argparse.ArgumentParser(description="Tinker LoRA fine-tuning for MarginLeak")
+    parser.add_argument("--smoke-test", action="store_true", help="Train on two examples for SDK verification")
+    parser.add_argument("--model", default="Qwen/Qwen3-8B")
+    parser.add_argument("--epochs", type=int, default=2)
+    parser.add_argument("--lora-rank", type=int, default=16)
+    parser.add_argument("--lr", type=float, default=2e-4)
+    parser.add_argument("--checkpoint-name", default="marginleak-qwen3-8b-lora")
     args = parser.parse_args()
 
     api_key = os.getenv("TINKER_API_KEY")
     if not api_key:
-        logger.warning(
-            "TINKER_API_KEY environment variable not set.\n"
-            "To train live on Thinking Machines' GPU clusters:\n"
-            "  set TINKER_API_KEY=your_key_here\n"
-            "Running simulated local dry run to validate training pipeline..."
-        )
+        raise RuntimeError("TINKER_API_KEY is required. No simulated training path is provided.")
+    if args.epochs < 1 or args.lora_rank < 1:
+        raise ValueError("epochs and lora-rank must be positive")
 
     data_dir = os.path.join(os.path.dirname(__file__), "data")
-    train_file = os.path.join(data_dir, "train.jsonl")
-    val_file = os.path.join(data_dir, "val.jsonl")
-
-    if not os.path.exists(train_file):
-        logger.error(f"Training dataset not found at {train_file}. Run dataset_generator.py first.")
-        sys.exit(1)
-
-    train_data = load_jsonl(train_file)
-    val_data = load_jsonl(val_file)
-
-    logger.info(f"Loaded {len(train_data)} training examples and {len(val_data)} validation examples.")
-    logger.info(f"Base model: {args.model}")
-    logger.info(f"LoRA config: rank={args.lora_rank}, alpha={args.lora_rank * 2}, lr={args.lr}")
-
+    train_data = load_jsonl(os.path.join(data_dir, "train.jsonl"))
     if args.smoke_test:
-        logger.info("Executing SMOKE TEST mode (2 sample batches)...")
         train_data = train_data[:2]
+    if not train_data:
+        raise RuntimeError("Training dataset is empty")
 
-    # Initialize Tinker SDK if key available
-    if api_key:
-        try:
-            import tinker
-            logger.info("Connecting to Thinking Machines Tinker ServiceClient...")
-            service_client = tinker.ServiceClient(api_key=api_key)
-            
-            logger.info(f"Initializing LoRA training session on {args.model}...")
-            # Demonstrating Tinker LoRA training loop
-            logger.info("Tinker session active. Allocating LoRA compute...")
-            
-            total_tokens = 0
-            for idx, ex in enumerate(train_data):
-                formatted = format_training_example(ex)
-                token_count = len(formatted.split()) * 1.3  # estimated tokens
-                total_tokens += token_count
-                if idx % 10 == 0 or idx == len(train_data) - 1:
-                    logger.info(f"Step {idx+1}/{len(train_data)}: Processed ~{int(total_tokens)} tokens | Loss: {0.42 - (idx*0.001):.4f}")
+    import tinker
 
-            est_cost = (total_tokens / 1_000_000) * 0.40  # Tinker rate ~$0.40 per 1M tokens
-            logger.info(f"Training complete! Total tokens: {int(total_tokens)} | Estimated credit used: ${est_cost:.4f} (Budget: $10.00)")
-            
-            # Save checkpoint metadata
-            checkpoint_info = {
-                "checkpoint_id": "tinker-lora-marginleak-v1",
-                "base_model": args.model,
-                "lora_rank": args.lora_rank,
-                "tokens_trained": int(total_tokens),
-                "estimated_cost_usd": est_cost,
-                "status": "ready"
-            }
-            with open(os.path.join(os.path.dirname(__file__), "checkpoint_metadata.json"), "w") as f:
-                json.dump(checkpoint_info, f, indent=2)
+    service_client = tinker.ServiceClient(api_key=api_key)
+    training_client = service_client.create_lora_training_client(
+        base_model=args.model,
+        rank=args.lora_rank,
+        user_metadata={"project": "MarginLeak", "dataset": "train.jsonl"},
+    )
+    tokenizer = training_client.get_tokenizer()
+    data = [make_datum(tinker, tokenizer, example) for example in train_data]
+    losses: List[float] = []
 
-        except Exception as e:
-            logger.error(f"Tinker API call error: {e}")
-    else:
-        # Dry run validation
-        logger.info("Simulated pipeline validation: all tokenization and JSON schemas verified.")
-        logger.info("Ready for execution when TINKER_API_KEY is supplied.")
+    for epoch in range(args.epochs):
+        for offset in range(0, len(data), 8):
+            batch = data[offset : offset + 8]
+            forward_backward = training_client.forward_backward(batch, "cross_entropy")
+            optim_step = training_client.optim_step(
+                adam_params=tinker.types.AdamParams(learning_rate=args.lr)
+            )
+            result = forward_backward.result()
+            optim_step.result()
+            loss = result.metrics.get("loss:sum")
+            if loss is not None:
+                losses.append(float(loss))
+            logger.info(
+                "epoch=%d/%d batch=%d/%d loss=%s",
+                epoch + 1, args.epochs, min(offset + 8, len(data)), len(data), loss,
+            )
+
+    checkpoint = training_client.save_weights_for_sampler(
+        name=args.checkpoint_name,
+        user_metadata={"base_model": args.model, "lora_rank": str(args.lora_rank)},
+    ).result()
+    checkpoint_data = checkpoint.model_dump() if hasattr(checkpoint, "model_dump") else vars(checkpoint)
+    metadata = {
+        "status": "trained",
+        "base_model": args.model,
+        "checkpoint_name": args.checkpoint_name,
+        "checkpoint": checkpoint_data,
+        "epochs": args.epochs,
+        "examples_trained": len(data),
+        "lora_rank": args.lora_rank,
+        "learning_rate": args.lr,
+        "observed_loss": losses,
+    }
+    output_path = os.path.join(os.path.dirname(__file__), "checkpoint_metadata.json")
+    with open(output_path, "w", encoding="utf-8") as handle:
+        json.dump(metadata, handle, indent=2, default=str)
+    logger.info("Saved checkpoint metadata to %s", output_path)
+
 
 if __name__ == "__main__":
-    run_training()
+    try:
+        run_training()
+    except Exception as exc:
+        logger.error("Tinker training failed: %s", exc)
+        sys.exit(1)

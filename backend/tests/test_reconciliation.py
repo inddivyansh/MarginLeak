@@ -1,6 +1,17 @@
 from decimal import Decimal
 from backend.app.engine.reconciliation import ReconciliationEngine
 
+
+def test_invalid_numeric_value_is_rejected():
+    try:
+        ReconciliationEngine.reconcile([
+            {"description": "Bad line", "quantity": "not-a-number", "unit_price": 10}
+        ])
+    except ValueError as exc:
+        assert "Invalid numeric value" in str(exc)
+    else:
+        raise AssertionError("Malformed numeric input must be rejected")
+
 def test_price_mismatch_rule():
     invoice_lines = [
         {

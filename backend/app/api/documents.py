@@ -33,6 +33,8 @@ async def upload_invoice(
     ws = None
     if workspace_id:
         ws = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+        if not ws:
+            raise HTTPException(status_code=404, detail="Workspace not found.")
     if not ws:
         ws = db.query(Workspace).first()
         if not ws:
@@ -42,7 +44,7 @@ async def upload_invoice(
             db.refresh(ws)
 
     # Save physical file
-    file_path = os.path.join(settings.upload_dir, f"{uuid.uuid4()}_{file.filename}")
+    file_path = os.path.join(settings.upload_dir, str(uuid.uuid4()))
     with open(file_path, "wb") as f:
         f.write(content)
 
@@ -130,7 +132,7 @@ async def preview_purchase_order(
         raise HTTPException(status_code=422, detail=parsed["warnings"][0])
 
     # Cache temp file for confirmation
-    temp_path = os.path.join(settings.upload_dir, f"temp_{uuid.uuid4()}_{file.filename}")
+    temp_path = os.path.join(settings.upload_dir, f"temp_{uuid.uuid4()}")
     with open(temp_path, "wb") as f:
         f.write(content)
 
@@ -163,7 +165,7 @@ async def confirm_purchase_order(
 
     ws = db.query(Workspace).filter(Workspace.id == req.workspace_id).first()
     if not ws:
-        ws = db.query(Workspace).first()
+        raise HTTPException(status_code=404, detail="Workspace not found.")
 
     po_number = req.po_number or parsed["po_number"]
     supplier_name = req.supplier_name or "Standard Supplier"

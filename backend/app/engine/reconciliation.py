@@ -10,8 +10,8 @@ def to_dec(val: Any) -> Decimal:
         return val
     try:
         return Decimal(str(val)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    except Exception:
-        return Decimal("0.00")
+    except (ArithmeticError, ValueError, TypeError) as exc:
+        raise ValueError(f"Invalid numeric value: {val!r}") from exc
 
 class ReconciliationEngine:
     @staticmethod
@@ -60,10 +60,16 @@ class ReconciliationEngine:
 
         # 2. Check for Duplicate Lines within this invoice
         seen_lines = {}
+        duplicate_line_ids = set()
         for idx, inv in enumerate(invoice_lines):
-            key = (inv.get("description", "").strip().lower(), float(inv.get("quantity", 0)), float(inv.get("unit_price", 0)))
+            key = (
+                inv.get("description", "").strip().lower(),
+                to_dec(inv.get("quantity")),
+                to_dec(inv.get("unit_price")),
+            )
             if key in seen_lines:
                 prev_line = seen_lines[key]
+                duplicate_line_ids.add(inv.get("id"))
                 dup_amount = to_dec(inv.get("total_price") or (to_dec(inv.get("quantity")) * to_dec(inv.get("unit_price"))))
                 total_amount_at_risk += dup_amount
                 findings.append({
@@ -103,6 +109,8 @@ class ReconciliationEngine:
 
         for match_info in matched_results:
             inv_line = match_info["invoice_line"]
+            if inv_line.get("id") in duplicate_line_ids:
+                continue
             po_line = match_info["matched_po_line"]
             is_ambiguous = match_info["is_ambiguous"]
             method = match_info["method"]
@@ -163,6 +171,9 @@ class ReconciliationEngine:
                 })
             else:
                 matched_count += 1
+
+            if is_ambiguous:
+                continue
 
             # Rule 1: Unit Price Difference
             p_inv = to_dec(inv_line.get("unit_price"))

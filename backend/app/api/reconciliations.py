@@ -22,14 +22,20 @@ router = APIRouter(tags=["Reconciliations"])
 @router.post("/reconciliations", response_model=ReconciliationResponse)
 def create_reconciliation(req: ReconciliationCreateRequest, db: Session = Depends(get_db)):
     # 1. Fetch Invoice
-    invoice = db.query(Invoice).filter(Invoice.id == req.invoice_id).first()
+    invoice = db.query(Invoice).filter(
+        Invoice.id == req.invoice_id,
+        Invoice.workspace_id == req.workspace_id,
+    ).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found.")
 
     # 2. Fetch Purchase Order if specified
     po = None
     if req.purchase_order_id:
-        po = db.query(PurchaseOrder).filter(PurchaseOrder.id == req.purchase_order_id).first()
+        po = db.query(PurchaseOrder).filter(
+            PurchaseOrder.id == req.purchase_order_id,
+            PurchaseOrder.workspace_id == req.workspace_id,
+        ).first()
 
     # 3. Load Invoice Lines
     invoice_lines = [
@@ -99,16 +105,19 @@ def create_reconciliation(req: ReconciliationCreateRequest, db: Session = Depend
     ]
 
     # 7. Run Reconciliation Engine
-    result = ReconciliationEngine.reconcile(
-        invoice_lines=invoice_lines,
-        po_lines=po_lines if po else None,
-        historical_prices=historical_map,
-        existing_invoice_numbers=existing_nums,
-        invoice_number=invoice.invoice_number,
-        supplier_key=invoice.supplier_key,
-        currency=invoice.currency,
-        options=req.options
-    )
+    try:
+        result = ReconciliationEngine.reconcile(
+            invoice_lines=invoice_lines,
+            po_lines=po_lines if po else None,
+            historical_prices=historical_map,
+            existing_invoice_numbers=existing_nums,
+            invoice_number=invoice.invoice_number,
+            supplier_key=invoice.supplier_key,
+            currency=invoice.currency,
+            options=req.options
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     # 8. Persist Reconciliation Record
     recon = Reconciliation(
