@@ -49,6 +49,7 @@ export interface Reconciliation {
   id: string;
   workspace_id: string;
   invoice_id: string;
+  supplier_key?: string;
   purchase_order_id?: string;
   status: string;
   amount_at_risk: number;
@@ -94,6 +95,26 @@ export interface BenchmarkData {
   sample_comparisons: any[];
 }
 
+export interface SupplierRisk {
+  supplier_key: string;
+  supplier_name?: string;
+  risk_level: 'low' | 'medium' | 'high';
+  overbilling_probability: number;
+  dispute_win_probability: number;
+  model_provider: string;
+  sample_count: number;
+  features: Record<string, number>;
+}
+
+export interface DisputeDraft {
+  subject: string;
+  body: string;
+  amount_at_risk: number;
+  currency: string;
+  invoice_number: string;
+  po_number?: string;
+}
+
 export const api = {
   async getWorkspace(): Promise<{ id: string; name: string; default_currency: string }> {
     const res = await fetch(`${API_BASE}/workspaces/default`);
@@ -130,6 +151,23 @@ export const api = {
 
   async getPriceHistory(): Promise<HistoricalPriceItem[]> {
     const res = await fetch(`${API_BASE}/history/prices`);
+    return res.json();
+  },
+
+  async getSupplierRisk(supplierKey?: string, workspaceId?: string): Promise<SupplierRisk> {
+    const params = new URLSearchParams();
+    if (supplierKey) params.set('supplier_key', supplierKey);
+    if (workspaceId) params.set('workspace_id', workspaceId);
+    const res = await fetch(`${API_BASE}/supplier-risk?${params.toString()}`);
+    return res.json();
+  },
+
+  async getDisputeDraft(findingId: string): Promise<DisputeDraft> {
+    const res = await fetch(`${API_BASE}/findings/${findingId}/dispute-draft`);
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: 'Unable to generate dispute draft' }));
+      throw new Error(error.detail || 'Unable to generate dispute draft');
+    }
     return res.json();
   },
 

@@ -158,6 +158,10 @@ class Reconciliation(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     completed_at = Column(DateTime, nullable=True)
 
+    @property
+    def supplier_key(self):
+        return self.invoice.supplier_key if self.invoice else None
+
     workspace = relationship("Workspace", back_populates="reconciliations")
     invoice = relationship("Invoice", back_populates="reconciliations")
     purchase_order = relationship("PurchaseOrder", back_populates="reconciliations")

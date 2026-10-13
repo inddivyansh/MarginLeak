@@ -182,6 +182,7 @@ class ReconciliationResponse(BaseModel):
     id: str
     workspace_id: str
     invoice_id: str
+    supplier_key: Optional[str] = None
     purchase_order_id: Optional[str] = None
     status: str
     amount_at_risk: float
@@ -222,6 +223,26 @@ class HistoricalPriceItem(BaseModel):
     latest_unit_price: float
     latest_purchase_date: Optional[str] = None
     price_history: List[Dict[str, Any]] = []
+
+
+class SupplierRiskResponse(BaseModel):
+    supplier_key: str
+    supplier_name: Optional[str] = None
+    risk_level: str
+    overbilling_probability: float
+    dispute_win_probability: float
+    model_provider: str
+    sample_count: int
+    features: Dict[str, float]
+
+
+class DisputeDraftResponse(BaseModel):
+    subject: str
+    body: str
+    amount_at_risk: float
+    currency: str
+    invoice_number: str
+    po_number: Optional[str] = None
 
 
 class EvaluationMetricSummary(BaseModel):

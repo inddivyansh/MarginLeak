@@ -1,6 +1,7 @@
 import csv
 import io
 import uuid
+from decimal import Decimal
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -12,7 +13,7 @@ from backend.app.models import (
 )
 from backend.app.schemas import (
     ReconciliationCreateRequest, ReconciliationResponse,
-    FindingResponse, FindingUpdate, MatchCorrectionUpdate
+    FindingResponse, FindingUpdate, MatchCorrectionUpdate, DisputeDraftResponse
 )
 from backend.app.engine.reconciliation import ReconciliationEngine
 
@@ -210,6 +211,44 @@ def update_finding(id: str, update: FindingUpdate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(finding)
     return finding
+
+
+@router.get("/findings/{id}/dispute-draft", response_model=DisputeDraftResponse)
+def get_dispute_draft(id: str, db: Session = Depends(get_db)):
+    finding = db.query(Finding).filter(Finding.id == id).first()
+    if not finding:
+        raise HTTPException(status_code=404, detail="Finding not found.")
+    if finding.status != "confirmed":
+        raise HTTPException(status_code=400, detail="Only confirmed findings can generate a dispute draft.")
+
+    invoice = finding.reconciliation.invoice
+    purchase_order = finding.reconciliation.purchase_order
+    evidence = finding.evidence_json or {}
+    amount = Decimal(str(finding.amount_at_risk or 0)).quantize(Decimal("0.01"))
+    currency = finding.currency or invoice.currency or "USD"
+    formula = evidence.get("calculation_formula") or finding.explanation
+    subject = f"Credit memo request: Invoice {invoice.invoice_number} - {currency} {amount} discrepancy"
+    body = (
+        f"Dear {invoice.supplier_name or 'Supplier'} team,\n\n"
+        f"We are requesting a credit memo for invoice {invoice.invoice_number} under "
+        f"purchase order {purchase_order.po_number if purchase_order else 'not provided'}. "
+        "Our accounts-payable review confirmed a discrepancy on the invoiced line.\n\n"
+        f"Finding: {finding.explanation}\n"
+        f"Calculation: {formula}\n"
+        f"Invoice source: page {evidence.get('invoice_page', 1)} - {evidence.get('invoice_snippet', 'see attached invoice')}\n"
+        f"Requested credit memo amount: {currency} {amount}\n\n"
+        "Please confirm the credit memo number and apply this amount to the outstanding balance. "
+        "We can provide the purchase order and invoice documents for reference.\n\n"
+        "Regards,\nAccounts Payable"
+    )
+    return DisputeDraftResponse(
+        subject=subject,
+        body=body,
+        amount_at_risk=float(amount),
+        currency=currency,
+        invoice_number=invoice.invoice_number,
+        po_number=purchase_order.po_number if purchase_order else None,
+    )
 
 
 @router.patch("/line-matches/{id}")

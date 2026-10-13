@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from backend.app.config import settings
 from backend.app.database import init_db, get_db
 from backend.app.models import Workspace
-from backend.app.api import documents, reconciliations, history, evaluations
+from backend.app.api import documents, reconciliations, history, evaluations, supplier_risk
 
 app = FastAPI(
     title=settings.app_name,
@@ -53,6 +53,7 @@ app.include_router(documents.router, prefix="/api/v1")
 app.include_router(reconciliations.router, prefix="/api/v1")
 app.include_router(history.router, prefix="/api/v1")
 app.include_router(evaluations.router, prefix="/api/v1")
+app.include_router(supplier_risk.router, prefix="/api/v1")
 
 # Mount built React frontend if dist exists
 dist_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")

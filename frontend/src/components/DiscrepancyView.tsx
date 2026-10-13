@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Finding } from '../api/client';
-import { AlertCircle, AlertTriangle, Info, CheckCircle2, XCircle, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { api, Finding, DisputeDraft } from '../api/client';
+import { AlertCircle, AlertTriangle, Info, CheckCircle2, XCircle, Mail } from 'lucide-react';
+import { DisputeDraftModal } from './DisputeDraftModal';
 
 interface DiscrepancyViewProps {
   findings: Finding[];
@@ -12,6 +13,17 @@ export const DiscrepancyView: React.FC<DiscrepancyViewProps> = ({ findings, onUp
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [dismissNoteId, setDismissNoteId] = useState<string | null>(null);
   const [dismissNoteText, setDismissNoteText] = useState<string>('');
+  const [draft, setDraft] = useState<DisputeDraft | null>(null);
+  const [draftLoadingId, setDraftLoadingId] = useState<string | null>(null);
+
+  const handleDraft = async (findingId: string) => {
+    setDraftLoadingId(findingId);
+    try {
+      setDraft(await api.getDisputeDraft(findingId));
+    } finally {
+      setDraftLoadingId(null);
+    }
+  };
 
   const filtered = findings.filter(f => {
     if (filterType !== 'ALL' && f.type !== filterType) return false;
@@ -174,13 +186,19 @@ export const DiscrepancyView: React.FC<DiscrepancyViewProps> = ({ findings, onUp
                   )}
 
                   {f.status === 'confirmed' && (
-                    <button
-                      className="btn btn-sm btn-secondary"
-                      onClick={() => onUpdateStatus(f.id, 'resolved', 'Handled with supplier credit memo')}
-                    >
-                      <CheckCircle2 size={14} color="#10b981" />
-                      <span>Mark Resolved / Disputed</span>
-                    </button>
+                    <>
+                      <button className="btn btn-sm btn-primary" onClick={() => handleDraft(f.id)} disabled={draftLoadingId === f.id}>
+                        <Mail size={14} />
+                        <span>{draftLoadingId === f.id ? 'Preparing...' : 'Generate Dispute Letter'}</span>
+                      </button>
+                      <button
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => onUpdateStatus(f.id, 'resolved', 'Handled with supplier credit memo')}
+                      >
+                        <CheckCircle2 size={14} color="#10b981" />
+                        <span>Mark Resolved / Disputed</span>
+                      </button>
+                    </>
                   )}
 
                   {f.status === 'dismissed' && (
@@ -226,6 +244,7 @@ export const DiscrepancyView: React.FC<DiscrepancyViewProps> = ({ findings, onUp
           })}
         </div>
       )}
+      {draft && <DisputeDraftModal draft={draft} onClose={() => setDraft(null)} />}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api, Reconciliation, Finding, HistoricalPriceItem, BenchmarkData } from './api/client';
+import { api, Reconciliation, HistoricalPriceItem, BenchmarkData, SupplierRisk } from './api/client';
 import { Navbar } from './components/Navbar';
 import { StatsCards } from './components/StatsCards';
 import { DiscrepancyView } from './components/DiscrepancyView';
@@ -19,6 +19,7 @@ export function App() {
   const [activeRecon, setActiveRecon] = useState<Reconciliation | null>(null);
   const [priceHistory, setPriceHistory] = useState<HistoricalPriceItem[]>([]);
   const [benchmark, setBenchmark] = useState<BenchmarkData | null>(null);
+  const [supplierRisk, setSupplierRisk] = useState<SupplierRisk | null>(null);
   const [activeTab, setActiveTab] = useState<'exceptions' | 'matching' | 'history' | 'benchmark'>('exceptions');
   const [isUploadOpen, setIsUploadOpen] = useState<boolean>(false);
   const [isSeeding, setIsSeeding] = useState<boolean>(false);
@@ -39,6 +40,7 @@ export function App() {
       if (recons.length > 0) {
         const fullRecon = await api.getReconciliation(recons[0].id);
         setActiveRecon(fullRecon);
+        setSupplierRisk(await api.getSupplierRisk(fullRecon.supplier_key, ws.id));
       }
 
       const hist = await api.getPriceHistory();
@@ -143,6 +145,21 @@ export function App() {
         reconciliation={activeRecon}
         accuracyGain={benchmark?.improvements?.field_accuracy_gain_pts || 16.8}
       />
+
+      {supplierRisk && (
+        <div className="glass-panel supplier-risk-strip">
+          <div>
+            <span className="section-kicker">SUPPLIER RISK</span>
+            <strong>{supplierRisk.supplier_name || supplierRisk.supplier_key.replace(/_/g, ' ')}</strong>
+            <span className={`badge risk-${supplierRisk.risk_level}`}>{supplierRisk.risk_level.toUpperCase()} OVERBILLING RISK</span>
+          </div>
+          <div className="supplier-risk-metrics">
+            <span>{Math.round(supplierRisk.overbilling_probability * 100)}% overbilling probability</span>
+            <span>{Math.round(supplierRisk.dispute_win_probability * 100)}% dispute win probability</span>
+            <small>{supplierRisk.model_provider} · {supplierRisk.sample_count} invoices</small>
+          </div>
+        </div>
+      )}
 
       {/* Navigation Tabs */}
       <div className="tabs-nav">
