@@ -122,6 +122,9 @@ source .venv/bin/activate
 # Install backend dependencies
 pip install -r backend/requirements.txt
 
+# Optional: edit .env to configure the database and AI credentials
+# TINKER_API_KEY enables Tinker normalization; blank uses the deterministic fallback
+
 # Run unit tests
 python -m pytest backend/tests
 ```
@@ -155,7 +158,12 @@ MarginLeak includes a ready-to-use **`render.yaml`** blueprint for one-click dep
 4. Render will automatically build the React frontend and deploy the FastAPI web service!
 5. Add your environment variables:
    * `TINKER_API_KEY`: Your Thinking Machines Tinker API key (optional; system includes zero-crash deterministic fallback)
+  * `DATABASE_URL`: PostgreSQL connection string in production; SQLite is the local default
+  * `BACKBOARD_API_KEY`: Optional Backboard integration key
+  * `TABPFN_ENABLED`: Set to `true` only when the image includes the optional TabPFN dependency
    * `ENVIRONMENT`: `production`
+
+The Render blueprint uses the included Dockerfile and provisions a persistent PostgreSQL database. TabPFN remains disabled by default so the standard deployment stays lightweight; install `backend/requirements-tabpfn.txt` in a custom image when enabling it.
 
 ---
 

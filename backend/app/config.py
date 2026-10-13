@@ -1,15 +1,16 @@
-import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
+import os
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
 
     app_name: str = "MarginLeak"
-    environment: str = os.getenv("ENVIRONMENT", "development")
-    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./marginleak.db")
-    tinker_api_key: Optional[str] = os.getenv("TINKER_API_KEY", None)
-    backboard_api_key: Optional[str] = os.getenv("BACKBOARD_API_KEY", None)
+    environment: str = "development"
+    database_url: str = "sqlite:///./marginleak.db"
+    tinker_api_key: Optional[str] = None
+    backboard_api_key: Optional[str] = None
+    tabpfn_enabled: bool = False
     default_currency: str = "USD"
     price_tolerance_percent: float = 2.0
     historical_alert_percent: float = 5.0

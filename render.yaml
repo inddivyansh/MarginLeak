@@ -1,17 +1,21 @@
 services:
   - type: web
     name: marginleak
-    runtime: python
+    runtime: docker
     plan: starter
     region: oregon
-    buildCommand: |
-      pip install -r backend/requirements.txt
-      cd frontend && npm install && npm run build && cd ..
-    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /health
     envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: marginleak-db
+          property: connectionString
       - key: ENVIRONMENT
         value: production
+      - key: TABPFN_ENABLED
+        value: "false"
       - key: TINKER_API_KEY
         sync: false
       - key: BACKBOARD_API_KEY
@@ -20,3 +24,9 @@ services:
         value: "2.0"
       - key: HISTORICAL_ALERT_PERCENT
         value: "5.0"
+
+databases:
+  - name: marginleak-db
+    databaseName: marginleak
+    user: marginleak
+    plan: starter

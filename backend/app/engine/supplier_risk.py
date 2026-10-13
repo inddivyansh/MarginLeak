@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
+from backend.app.config import settings
 from backend.app.models import Finding, Invoice, InvoiceLine, Reconciliation
 
 
@@ -29,7 +30,7 @@ def _heuristic_prediction(features: Dict[str, Decimal]) -> Dict[str, Any]:
 
 
 def _tabpfn_prediction(rows: List[Dict[str, Decimal]], labels: List[int]) -> Optional[Dict[str, Any]]:
-    if len(rows) < 4 or len(set(labels)) < 2:
+    if not settings.tabpfn_enabled or len(rows) < 4 or len(set(labels)) < 2:
         return None
     try:
         from tabpfn import TabPFNClassifier
