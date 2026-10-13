@@ -1,7 +1,7 @@
-# 🛡️ MarginLeak — Find the Money Your Business Is Losing
+# MarginLeak: Find the Money Your Business Is Losing
 
-> **Autonomous Accounts-Payable AI Auditor for Small Businesses & E-Commerce Sellers**  
-> *Built for Hacktoberfest 2026 AI Challenge: Side Hustle · Powered by Thinking Machines Tinker & Render*
+> Autonomous accounts-payable AI auditor for small businesses and e-commerce sellers.
+> Built for the Hacktoberfest 2026 AI Challenge: Side Hustle.
 
 [![Render](https://img.shields.io/badge/Deploy-Render-blue?logo=render)](https://render.com)
 [![Thinking Machines](https://img.shields.io/badge/Fine--Tuned-Thinking%20Machines%20Tinker-indigo)](https://tinker-docs.thinkingmachines.ai)
@@ -12,7 +12,7 @@
 
 ---
 
-## 💡 The Problem: Unnoticed Accounts-Payable Leakage
+## The Problem: Unnoticed Accounts-Payable Leakage
 
 Small e-commerce businesses and retailers buy products from dozens of suppliers. Every month, they receive hundreds of invoice lines.
 Someone has to compare them against purchase orders, verify unit prices, check quantities, and remember what suppliers charged last time:
@@ -29,7 +29,7 @@ Manual line-by-line checking is tedious, error-prone, and spreadsheet formulas b
 
 ---
 
-## 🚀 Key Differentiators
+## Key Differentiators
 
 | Feature | How MarginLeak Solves It |
 | :--- | :--- |
@@ -40,7 +40,7 @@ Manual line-by-line checking is tedious, error-prone, and spreadsheet formulas b
 
 ---
 
-## 🧠 Open-Weight Fine-Tuning with Thinking Machines Tinker
+## Open-Weight Fine-Tuning with Thinking Machines Tinker
 
 For the Hacktoberfest **Best Use of Tinker** category, MarginLeak fine-tunes an open-weight model (`Qwen/Qwen3-8B`) using **Thinking Machines' Tinker API** with Low-Rank Adaptation (LoRA).
 
@@ -72,11 +72,20 @@ Run the deterministic report:
 python tinker_experiment/run_benchmark.py
 ```
 
-After training and saving a Tinker sampler artifact, pass `--base-model`, `--tinker-model-path`, and `TINKER_API_KEY` to measure model comparisons.
+After training and saving a Tinker sampler artifact, pass `--base-model`, `--tinker-model-path`, and `TINKER_API_KEY` to measure model comparisons. The repository does not claim base-model or LoRA metrics until those real inference runs have been completed.
+
+To run real LoRA training:
+
+```bash
+set TINKER_API_KEY=your_key_here
+python tinker_experiment/train_tinker_lora.py --epochs 2 --lora-rank 16
+```
+
+The trainer calls Tinker's `create_lora_training_client`, performs `forward_backward` and optimizer steps, saves a sampler artifact, and records the returned checkpoint metadata in `tinker_experiment/checkpoint_metadata.json`. Without `TINKER_API_KEY`, it exits with an error instead of simulating training.
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
 ┌────────────────────────────────────────────────────────┐
@@ -103,7 +112,7 @@ After training and saving a Tinker sampler artifact, pass `--base-model`, `--tin
 
 ---
 
-## 🛠️ Quickstart: Running Locally
+## Quickstart: Running Locally
 
 ### Prerequisites
 * Python 3.12+ (or 3.14)
@@ -121,8 +130,8 @@ source .venv/bin/activate
 # Install backend dependencies
 pip install -r backend/requirements.txt
 
-# Optional: edit .env to configure the database and AI credentials
-# TINKER_API_KEY enables Tinker normalization; blank uses the deterministic fallback
+# Optional: edit .env to configure the database and AI credentials.
+# TINKER_API_KEY enables Tinker normalization; blank uses the deterministic fallback.
 
 # Run unit tests
 python -m pytest backend/tests
@@ -143,11 +152,25 @@ uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 Open **[http://127.0.0.1:8000](http://127.0.0.1:8000)** in your browser!
 
-Click **"Load Demo Scenario"** in the top bar to instantly seed realistic supplier invoices and see $1,790.00 in caught discrepancies.
+Click **"Load Demo Scenario"** in the top bar to seed realistic supplier invoices and inspect the reconciliation workflow.
+
+## API Surface
+
+All API routes are mounted under `/api/v1`.
+
+| Area | Routes |
+| :--- | :--- |
+| Documents | `POST /documents/invoices`, `POST /purchase-orders/import`, `POST /purchase-orders/confirm-import` |
+| Reconciliation | `POST /reconciliations`, `GET /reconciliations`, `GET /reconciliations/{id}`, `PATCH /findings/{id}` |
+| Evidence and actions | `GET /findings/{id}/dispute-draft`, `GET /reports/{reconciliation_id}.csv`, `PATCH /line-matches/{id}` |
+| Risk and history | `GET /supplier-risk`, `GET /history/prices` |
+| Demo and evaluation | `POST /demo/seed-sample-scenario`, `POST /evaluations/normalize-test`, `GET /evaluations/latest` |
+
+Financial values are parsed and calculated with `decimal.Decimal`. Malformed numeric input returns a validation error, ambiguous product matches remain review-only, and uploaded files are stored under generated names rather than user-controlled paths.
 
 ---
 
-## 🚢 Deploying to Render
+## Deploying to Render
 
 MarginLeak includes a ready-to-use **`render.yaml`** blueprint for one-click deployment.
 
@@ -156,31 +179,30 @@ MarginLeak includes a ready-to-use **`render.yaml`** blueprint for one-click dep
 3. Click **New +** → **Blueprint** and connect your GitHub repository.
 4. Render will automatically build the React frontend and deploy the FastAPI web service!
 5. Add your environment variables:
-   * `TINKER_API_KEY`: Your Thinking Machines Tinker API key (optional; system includes zero-crash deterministic fallback)
-  * `DATABASE_URL`: PostgreSQL connection string in production; SQLite is the local default
+  * `TINKER_API_KEY`: Thinking Machines Tinker API key, optional because the deterministic fallback remains available
   * `BACKBOARD_API_KEY`: Optional Backboard integration key
-  * `TABPFN_ENABLED`: Set to `true` only when the image includes the optional TabPFN dependency
-   * `ENVIRONMENT`: `production`
+  * `TABPFN_ENABLED`: Set to `true` only when the image includes `backend/requirements-tabpfn.txt`
+  * `ENVIRONMENT`: `production`
 
 The Render blueprint uses the included Dockerfile and provisions a persistent PostgreSQL database. TabPFN remains disabled by default so the standard deployment stays lightweight; install `backend/requirements-tabpfn.txt` in a custom image when enabling it.
 
 ---
 
-## 🧪 Running the Tinker Benchmark
+## Running the Tinker Benchmark
 
 To reproduce the model benchmark:
 ```bash
 # 1. Generate dataset splits
 python tinker_experiment/dataset_generator.py
 
-# 2. Run LoRA training smoke test
+# 2. Run real LoRA training smoke test; requires TINKER_API_KEY
 python tinker_experiment/train_tinker_lora.py --smoke-test
 
-# 3. Evaluate held-out benchmark
+# 3. Evaluate held-out benchmark; model metrics require real Tinker artifacts
 python tinker_experiment/run_benchmark.py
 ```
 
 ---
 
-## 📄 License
+## License
 MIT License. Built for Hacktoberfest 2026.
