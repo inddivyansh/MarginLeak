@@ -16,6 +16,20 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  const validateBackendSession = async (supabase: SupabaseClient, session: { access_token: string; user: User }) => {
+    setAccessToken(session.access_token);
+    const apiBase = import.meta.env.VITE_API_URL || '/api/v1';
+    const response = await fetch(`${apiBase}/auth/me`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!response.ok) {
+      setAccessToken(null);
+      await supabase.auth.signOut();
+      throw new Error('The backend rejected this session. Verify SUPABASE_JWT_SECRET in Render and redeploy.');
+    }
+    setUser(session.user);
+  };
+
   useEffect(() => {
     let mounted = true;
     const apiBase = import.meta.env.VITE_API_URL || '/api/v1';
@@ -30,13 +44,18 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
         setClient(supabase);
         const { data } = await supabase.auth.getSession();
         if (data.session) {
-          setAccessToken(data.session.access_token);
-          setUser(data.session.user);
+          await validateBackendSession(supabase, data.session);
         }
         setLoading(false);
         supabase.auth.onAuthStateChange((_event, session) => {
-          setAccessToken(session?.access_token || null);
-          setUser(session?.user || null);
+          if (!session) {
+            setAccessToken(null);
+            setUser(null);
+            return;
+          }
+          void validateBackendSession(supabase, session).catch((error) => {
+            if (mounted) setMessage(error.message);
+          });
         });
       })
       .catch((error) => {
@@ -72,7 +91,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     setSubmitting(false);
   };
 
-  if (loading) return <div className="auth-shell"><div className="auth-panel"><span className="section-kicker">MARGINLEAK</span><h1>Loading secure workspace</h1></div></div>;
+  if (loading) return <div className="auth-shell"><div className="auth-panel"><span className="section-kicker">MARGINLEAK</span><h1>Verifying secure workspace</h1><p>Checking your authenticated session...</p></div></div>;
   if (user) return <><button className="auth-logout" onClick={() => client?.auth.signOut()}>Sign Out</button>{children}</>;
 
   return (
