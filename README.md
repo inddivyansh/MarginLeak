@@ -192,6 +192,8 @@ MarginLeak includes a ready-to-use **`render.yaml`** blueprint for one-click dep
 
 The Render blueprint uses the included Dockerfile and provisions a persistent PostgreSQL database. TabPFN remains disabled by default so the standard deployment stays lightweight; install `backend/requirements-tabpfn.txt` in a custom image when enabling it. Set `TINKER_MODEL_PATH` after a successful training run to use the saved sampler artifact in production.
 
+For Supabase email confirmation links, set the hosted project **Site URL** to `https://marginleak.onrender.com` and add `https://marginleak.onrender.com/**` under **Authentication > URL Configuration > Redirect URLs**. Also add `http://localhost:5173/**` for local development. The frontend passes `window.location.origin` as `emailRedirectTo` during signup, so confirmation links follow the environment where the account was created.
+
 ## Authentication and Data Isolation
 
 MarginLeak uses Supabase Auth for email/password signup, login, logout, and session restoration. The frontend sends the Supabase access token as a Bearer token on API requests. FastAPI verifies the token with `SUPABASE_JWT_SECRET`, maps the verified subject to a local user record, and creates a private workspace for a new user on first authenticated access.

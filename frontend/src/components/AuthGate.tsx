@@ -62,7 +62,11 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     setMessage(null);
     const result = mode === 'login'
       ? await client.auth.signInWithPassword({ email, password })
-      : await client.auth.signUp({ email, password });
+      : await client.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      });
     if (result.error) setMessage(result.error.message);
     else if (mode === 'signup' && !result.data.session) setMessage('Account created. Check your email to confirm the account, then sign in.');
     setSubmitting(false);
