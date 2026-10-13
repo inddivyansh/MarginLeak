@@ -20,15 +20,16 @@ The primary customer is a small business owner or bookkeeper processing roughly 
 
 ## Demo
 
-Repository: https://github.com/inddivyansh/MarginLeak
+Public hosted demo: https://marginleak.onrender.com/
 
-The repository includes a one-click demo scenario in the dashboard. It seeds a realistic supplier purchase order and invoice with price, quantity, historical-price, and duplicate-line discrepancies.
+The deployed application opens with Supabase email/password authentication. After signing in, each account receives a private workspace. The dashboard includes a one-click demo scenario that seeds a purchase order and supplier invoice with intentional price, quantity, historical-price, and duplicate-line findings.
 
-A public hosted demo URL is not included yet. The repository contains a Render Blueprint and Dockerfile for deployment with a managed PostgreSQL database.
 
 ## Code
 
 GitHub repository: https://github.com/inddivyansh/MarginLeak
+
+The repository includes a one-click demo scenario in the dashboard. It seeds a realistic supplier purchase order and invoice with price, quantity, historical-price, and duplicate-line discrepancies.
 
 Important implementation areas:
 
@@ -40,6 +41,7 @@ Important implementation areas:
 - Held-out evaluation: `tinker_experiment/run_benchmark.py`
 - React dashboard: `frontend/src/`
 - Render deployment: `render.yaml` and `Dockerfile`
+- Authentication and workspace ownership: `backend/app/auth.py`, `backend/app/api/auth.py`, and `frontend/src/components/AuthGate.tsx`
 
 The project is licensed under the MIT License.
 
@@ -65,6 +67,8 @@ The rest of the stack is:
 
 The benchmark runner evaluates the deterministic fallback locally. Base-model and LoRA metrics are recorded as `not_run` until real Tinker model artifacts and inference runs are supplied. This keeps the repository from presenting estimated metrics as measured results.
 
+For deployment, Supabase Auth handles email/password identity and session restoration. FastAPI verifies the Supabase access token, maps it to a local user record, creates a private workspace on first authenticated access, and checks workspace membership on every private route. Uploaded files use generated paths and are not authorized by a client-provided workspace ID alone.
+
 ## Why Does Open Innovation Matter?
 
 Accounts-payable leakage is a practical problem for businesses that cannot afford a large finance or procurement team. An open implementation makes the workflow inspectable: owners can see how a product was matched, how an amount was calculated, and which source text supported the finding.
@@ -78,8 +82,7 @@ The most important design choice is not to ask the model to calculate money. Ope
 No public agent-session transcript is attached to this submission.
 
 ## My First User
-
-No external paying customer is claimed yet. The current repository includes a realistic seeded demo scenario for evaluation and product walkthroughs.
+I tested an early version with a family-owned hardware tool shop. The workflow helped identify several invoice and purchase-order differences during testing. This was an informal product test, not a paying customer, so I am not claiming external revenue or a formal customer deployment.
 
 ## Prize Categories
 

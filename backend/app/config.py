@@ -29,5 +29,14 @@ class Settings(BaseSettings):
             url = url.replace("postgres://", "postgresql://", 1)
         return url
 
+    @property
+    def supabase_project_url(self) -> Optional[str]:
+        if not self.supabase_url:
+            return None
+        url = self.supabase_url.rstrip("/")
+        if url.endswith("/rest/v1"):
+            url = url[:-len("/rest/v1")]
+        return url
+
 settings = Settings()
 os.makedirs(settings.upload_dir, exist_ok=True)

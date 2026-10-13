@@ -7,6 +7,10 @@ import os
 import sys
 from typing import Any, Dict, List
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from backend.app.config import settings
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("TinkerTrainer")
 
@@ -40,10 +44,8 @@ def make_datum(tinker_module: Any, tokenizer: Any, example: Dict[str, Any]) -> A
     return tinker_module.types.Datum(
         model_input=tinker_module.types.ModelInput.from_ints(tokens),
         loss_fn_inputs={
-            "target_tokens": tinker_module.types.ModelInput.from_ints(tokens),
-            "weights": tinker_module.types.TensorData(
-                data=weights, dtype="float32", shape=[len(weights)]
-            ),
+            "target_tokens": tokens,
+            "weights": weights,
         },
     )
 
@@ -58,7 +60,7 @@ def run_training() -> None:
     parser.add_argument("--checkpoint-name", default="marginleak-qwen3-8b-lora")
     args = parser.parse_args()
 
-    api_key = os.getenv("TINKER_API_KEY")
+    api_key = os.getenv("TINKER_API_KEY") or settings.tinker_api_key
     if not api_key:
         raise RuntimeError("TINKER_API_KEY is required. No simulated training path is provided.")
     if args.epochs < 1 or args.lora_rank < 1:

@@ -12,7 +12,7 @@ router = APIRouter(tags=["Authentication"])
 @router.get("/auth/config")
 def auth_config():
     return {
-        "supabase_url": settings.supabase_url,
+        "supabase_url": settings.supabase_project_url,
         "supabase_anon_key": settings.supabase_anon_key,
     }
 

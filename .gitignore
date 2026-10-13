@@ -26,6 +26,7 @@ frontend/.env.local
 .env.*.local
 *.pem
 *.key
+tinker_experiment/checkpoint_metadata.json
 
 # IDE
 .vscode/

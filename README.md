@@ -132,6 +132,7 @@ pip install -r backend/requirements.txt
 
 # Optional: edit .env to configure the database and AI credentials.
 # TINKER_API_KEY enables Tinker normalization; blank uses the deterministic fallback.
+# SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_JWT_SECRET enable authentication.
 
 # Run unit tests
 python -m pytest backend/tests
@@ -152,7 +153,7 @@ uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 Open **[http://127.0.0.1:8000](http://127.0.0.1:8000)** in your browser!
 
-Click **"Load Demo Scenario"** in the top bar to seed realistic supplier invoices and inspect the reconciliation workflow.
+After configuring Supabase Auth, sign in or create an account. The application creates a private workspace for the authenticated user. Click **"Load Demo Scenario"** in the top bar to seed realistic supplier invoices and inspect the reconciliation workflow.
 
 ## API Surface
 
@@ -165,6 +166,8 @@ All API routes are mounted under `/api/v1`.
 | Evidence and actions | `GET /findings/{id}/dispute-draft`, `GET /reports/{reconciliation_id}.csv`, `PATCH /line-matches/{id}` |
 | Risk and history | `GET /supplier-risk`, `GET /history/prices` |
 | Demo and evaluation | `POST /demo/seed-sample-scenario`, `POST /evaluations/normalize-test`, `GET /evaluations/latest` |
+
+Authentication routes include `GET /auth/config` and `GET /auth/me`. All routes other than `/health` and the public auth configuration require a Supabase Bearer access token.
 
 Financial values are parsed and calculated with `decimal.Decimal`. Malformed numeric input returns a validation error, ambiguous product matches remain review-only, and uploaded files are stored under generated names rather than user-controlled paths.
 
@@ -181,7 +184,7 @@ MarginLeak includes a ready-to-use **`render.yaml`** blueprint for one-click dep
 5. Add your environment variables:
   * `TINKER_API_KEY`: Thinking Machines Tinker API key, optional because the deterministic fallback remains available
   * `TINKER_MODEL_PATH`: Saved Tinker sampler path from the LoRA training run; when set, live normalization uses this artifact
-  * `SUPABASE_URL`, `SUPABASE_ANON_KEY`: Public Supabase project settings used by the frontend auth flow
+  * `SUPABASE_URL`, `SUPABASE_ANON_KEY`: Public Supabase project settings used by the frontend auth flow. Use the project root URL, such as `https://your-project.supabase.co`, not `/rest/v1`.
   * `SUPABASE_JWT_SECRET`: Supabase server secret used by FastAPI to verify access tokens; never expose this to the frontend
   * `BACKBOARD_API_KEY`: Optional Backboard integration key
   * `TABPFN_ENABLED`: Set to `true` only when the image includes `backend/requirements-tabpfn.txt`
