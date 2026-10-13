@@ -23,6 +23,35 @@ class Workspace(Base):
     invoices = relationship("Invoice", back_populates="workspace", cascade="all, delete-orphan")
     reconciliations = relationship("Reconciliation", back_populates="workspace", cascade="all, delete-orphan")
     aliases = relationship("SupplierItemAlias", back_populates="workspace", cascade="all, delete-orphan")
+    memberships = relationship("WorkspaceMembership", back_populates="workspace", cascade="all, delete-orphan")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String(36), primary_key=True, default=gen_uuid)
+    external_id = Column(String(255), nullable=False, unique=True, index=True)
+    email = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    memberships = relationship("WorkspaceMembership", back_populates="user", cascade="all, delete-orphan")
+
+
+class WorkspaceMembership(Base):
+    __tablename__ = "workspace_memberships"
+
+    id = Column(String(36), primary_key=True, default=gen_uuid)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    workspace_id = Column(String(36), ForeignKey("workspaces.id"), nullable=False, index=True)
+    role = Column(String(50), default="owner", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="memberships")
+    workspace = relationship("Workspace", back_populates="memberships")
+
+    __table_args__ = (
+        Index("idx_membership_user_workspace", "user_id", "workspace_id", unique=True),
+    )
 
 
 class Document(Base):

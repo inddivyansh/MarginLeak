@@ -6,8 +6,9 @@ from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from backend.app.auth import get_current_user, get_user_workspace
 from backend.app.database import get_db
-from backend.app.models import ModelEvaluation, Workspace, Document, Invoice, InvoiceLine, PurchaseOrder, PurchaseOrderLine, Reconciliation, LineMatch, Finding
+from backend.app.models import ModelEvaluation, Workspace, Document, Invoice, InvoiceLine, PurchaseOrder, PurchaseOrderLine, Reconciliation, LineMatch, Finding, User
 from backend.app.ai.tinker_client import tinker_client
 from backend.app.ai.fallback_engine import FallbackNormalizer
 from backend.app.engine.reconciliation import ReconciliationEngine
@@ -19,7 +20,7 @@ class NormalizeTestRequest(BaseModel):
     sku: str = ""
 
 @router.get("/evaluations/latest")
-def get_latest_evaluation(db: Session = Depends(get_db)):
+def get_latest_evaluation(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Returns the benchmark comparison between Baseline A, Base Model, and Tinker Fine-Tuned Model."""
     # Check DB first
     eval_record = db.query(ModelEvaluation).order_by(ModelEvaluation.created_at.desc()).first()
@@ -40,96 +41,32 @@ def get_latest_evaluation(db: Session = Depends(get_db)):
             data = json.load(f)
             return data
 
-    # Default calibrated benchmark data if file hasn't run yet
+    # Do not fabricate performance numbers when no benchmark artifact exists.
     return {
-        "model_name": "Qwen/Qwen3-8B (LoRA SFT via Thinking Machines Tinker)",
-        "dataset_version": "v1.2-heldout-250",
-        "config": {
-            "base_model": "Qwen/Qwen3-8B",
-            "lora_rank": 16,
-            "lora_alpha": 32,
-            "training_samples": 550,
-            "validation_samples": 120,
-            "held_out_test_samples": 250,
-            "optimizer": "AdamW",
-            "learning_rate": 2e-4
-        },
-        "metrics": {
-            "baseline_a_deterministic": {
-                "name": "Baseline A (Deterministic Regex & Fuzzy Matching)",
-                "exact_structured_field_acc": 68.4,
-                "json_validity_rate": 100.0,
-                "false_merge_rate": 8.8,
-                "match_precision": 82.1,
-                "match_recall": 74.3,
-                "p50_latency_ms": 2.4,
-                "p95_latency_ms": 6.8,
-                "cost_per_1k_lines": 0.00
-            },
-            "baseline_b_base_model": {
-                "name": "Baseline B (Base Qwen3-8B Zero-Shot)",
-                "exact_structured_field_acc": 76.8,
-                "json_validity_rate": 87.2,
-                "false_merge_rate": 11.2,
-                "match_precision": 84.5,
-                "match_recall": 81.0,
-                "p50_latency_ms": 320.0,
-                "p95_latency_ms": 580.0,
-                "cost_per_1k_lines": 0.42
-            },
-            "candidate_c_tinker_lora": {
-                "name": "Candidate C (Tinker LoRA Fine-Tuned Model)",
-                "exact_structured_field_acc": 93.6,
-                "json_validity_rate": 99.6,
-                "false_merge_rate": 1.6,
-                "match_precision": 96.8,
-                "match_recall": 94.2,
-                "p50_latency_ms": 290.0,
-                "p95_latency_ms": 510.0,
-                "cost_per_1k_lines": 0.38
-            }
-        },
-        "improvements": {
-            "field_accuracy_gain_pts": 16.8,
-            "false_merge_reduction_pct": 85.7,
-            "json_reliability_gain_pts": 12.4
-        },
-        "sample_comparisons": [
-            {
-                "input": "NITR GLOVE BLU LRG 100/BOX",
-                "ground_truth": {"canonical_description": "Blue nitrile gloves, large, 100 per box", "pack_quantity": 100, "pack_unit": "box", "size": "large"},
-                "base_model": {"canonical_description": "Nitrile glove blue", "pack_quantity": 1, "pack_unit": "box", "size": None},
-                "tinker_model": {"canonical_description": "Blue nitrile gloves, large, 100 per box", "pack_quantity": 100, "pack_unit": "box", "size": "large"}
-            },
-            {
-                "input": "7P Type C Dock w/ 100W PD",
-                "ground_truth": {"canonical_description": "USB-C Hub, 7-in-1 with 100W Power Delivery", "pack_quantity": 1, "pack_unit": "each"},
-                "base_model": {"canonical_description": "Dock 7P type C", "pack_quantity": 7, "pack_unit": "each"},
-                "tinker_model": {"canonical_description": "USB-C Hub, 7-in-1 with 100W Power Delivery", "pack_quantity": 1, "pack_unit": "each"}
-            }
-        ]
+        "model_name": "No benchmark artifact available",
+        "dataset_version": None,
+        "config": {},
+        "metrics": {},
+        "improvements": None,
+        "sample_comparisons": [],
+        "status": "not_run",
     }
 
 
 @router.post("/evaluations/normalize-test")
-def test_normalize_description(req: NormalizeTestRequest):
+def test_normalize_description(req: NormalizeTestRequest, user: User = Depends(get_current_user)):
     """Interactive endpoint to test line-item normalization live in the web UI."""
     return tinker_client.normalize_line(req.description, req.sku or None)
 
 
 @router.post("/demo/seed-sample-scenario")
-def seed_sample_scenario(db: Session = Depends(get_db)):
+def seed_sample_scenario(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     One-click setup for live demo on Render:
     Creates a realistic small e-commerce retailer scenario with 1 Purchase Order and 1 Supplier Invoice
     containing intentional price increases, quantity overcharges, and historical price spikes.
     """
-    ws = db.query(Workspace).first()
-    if not ws:
-        ws = Workspace(name="TechVault E-Commerce LLC", default_currency="USD")
-        db.add(ws)
-        db.commit()
-        db.refresh(ws)
+    ws = get_user_workspace(user, db)
 
     # 1. Create Purchase Order
     po_doc = Document(

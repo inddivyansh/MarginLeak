@@ -6,10 +6,11 @@ from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
+from backend.app.auth import get_authorized_workspace, get_current_user
 from backend.app.database import get_db
 from backend.app.models import (
-    Workspace, Invoice, InvoiceLine, PurchaseOrder, PurchaseOrderLine,
-    Reconciliation, LineMatch, Finding, ReviewEvent, SupplierItemAlias
+    Invoice, InvoiceLine, PurchaseOrder, PurchaseOrderLine,
+    Reconciliation, LineMatch, Finding, ReviewEvent, SupplierItemAlias, User
 )
 from backend.app.schemas import (
     ReconciliationCreateRequest, ReconciliationResponse,
@@ -20,7 +21,8 @@ from backend.app.engine.reconciliation import ReconciliationEngine
 router = APIRouter(tags=["Reconciliations"])
 
 @router.post("/reconciliations", response_model=ReconciliationResponse)
-def create_reconciliation(req: ReconciliationCreateRequest, db: Session = Depends(get_db)):
+def create_reconciliation(req: ReconciliationCreateRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    get_authorized_workspace(req.workspace_id, user, db)
     # 1. Fetch Invoice
     invoice = db.query(Invoice).filter(
         Invoice.id == req.invoice_id,
@@ -178,13 +180,15 @@ def create_reconciliation(req: ReconciliationCreateRequest, db: Session = Depend
 
 
 @router.get("/reconciliations", response_model=List[ReconciliationResponse])
-def list_reconciliations(workspace_id: str, db: Session = Depends(get_db)):
+def list_reconciliations(workspace_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    get_authorized_workspace(workspace_id, user, db)
     query = db.query(Reconciliation).filter(Reconciliation.workspace_id == workspace_id)
     return query.order_by(Reconciliation.created_at.desc()).all()
 
 
 @router.get("/reconciliations/{id}", response_model=ReconciliationResponse)
-def get_reconciliation(id: str, workspace_id: str, db: Session = Depends(get_db)):
+def get_reconciliation(id: str, workspace_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    get_authorized_workspace(workspace_id, user, db)
     recon = db.query(Reconciliation).filter(Reconciliation.id == id, Reconciliation.workspace_id == workspace_id).first()
     if not recon:
         raise HTTPException(status_code=404, detail="Reconciliation not found.")
@@ -192,7 +196,8 @@ def get_reconciliation(id: str, workspace_id: str, db: Session = Depends(get_db)
 
 
 @router.get("/reconciliations/{id}/findings", response_model=List[FindingResponse])
-def list_findings(id: str, workspace_id: str, db: Session = Depends(get_db)):
+def list_findings(id: str, workspace_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    get_authorized_workspace(workspace_id, user, db)
     recon = db.query(Reconciliation).filter(
         Reconciliation.id == id,
         Reconciliation.workspace_id == workspace_id,
@@ -204,7 +209,8 @@ def list_findings(id: str, workspace_id: str, db: Session = Depends(get_db)):
 
 
 @router.patch("/findings/{id}", response_model=FindingResponse)
-def update_finding(id: str, update: FindingUpdate, workspace_id: str, db: Session = Depends(get_db)):
+def update_finding(id: str, update: FindingUpdate, workspace_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    get_authorized_workspace(workspace_id, user, db)
     finding = db.query(Finding).join(Reconciliation).filter(Finding.id == id, Reconciliation.workspace_id == workspace_id).first()
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found.")
@@ -229,7 +235,8 @@ def update_finding(id: str, update: FindingUpdate, workspace_id: str, db: Sessio
 
 
 @router.get("/findings/{id}/dispute-draft", response_model=DisputeDraftResponse)
-def get_dispute_draft(id: str, workspace_id: str, db: Session = Depends(get_db)):
+def get_dispute_draft(id: str, workspace_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    get_authorized_workspace(workspace_id, user, db)
     finding = db.query(Finding).join(Reconciliation).filter(Finding.id == id, Reconciliation.workspace_id == workspace_id).first()
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found.")
@@ -267,7 +274,8 @@ def get_dispute_draft(id: str, workspace_id: str, db: Session = Depends(get_db))
 
 
 @router.patch("/line-matches/{id}")
-def correct_match(id: str, correction: MatchCorrectionUpdate, workspace_id: str, db: Session = Depends(get_db)):
+def correct_match(id: str, correction: MatchCorrectionUpdate, workspace_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    get_authorized_workspace(workspace_id, user, db)
     match = db.query(LineMatch).join(Reconciliation).filter(LineMatch.id == id, Reconciliation.workspace_id == workspace_id).first()
     if not match:
         raise HTTPException(status_code=404, detail="Match not found.")
@@ -305,7 +313,8 @@ def correct_match(id: str, correction: MatchCorrectionUpdate, workspace_id: str,
 
 
 @router.get("/reports/{reconciliation_id}.csv")
-def export_csv_report(reconciliation_id: str, workspace_id: str, db: Session = Depends(get_db)):
+def export_csv_report(reconciliation_id: str, workspace_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    get_authorized_workspace(workspace_id, user, db)
     recon = db.query(Reconciliation).filter(Reconciliation.id == reconciliation_id, Reconciliation.workspace_id == workspace_id).first()
     if not recon:
         raise HTTPException(status_code=404, detail="Reconciliation not found.")

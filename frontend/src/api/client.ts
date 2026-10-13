@@ -1,4 +1,17 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
+let accessToken: string | null = null;
+
+export function setAccessToken(token: string | null) {
+  accessToken = token;
+}
+
+async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
+  const response = await fetch(input, { ...init, headers });
+  if (response.status === 401) window.dispatchEvent(new Event('marginleak-auth-expired'));
+  return response;
+}
 
 export interface Finding {
   id: string;
@@ -117,22 +130,22 @@ export interface DisputeDraft {
 
 export const api = {
   async getWorkspace(): Promise<{ id: string; name: string; default_currency: string }> {
-    const res = await fetch(`${API_BASE}/workspaces/default`);
+    const res = await apiFetch(`${API_BASE}/workspaces/default`);
     return res.json();
   },
 
   async getReconciliations(workspaceId: string): Promise<Reconciliation[]> {
-    const res = await fetch(`${API_BASE}/reconciliations?workspace_id=${encodeURIComponent(workspaceId)}`);
+    const res = await apiFetch(`${API_BASE}/reconciliations?workspace_id=${encodeURIComponent(workspaceId)}`);
     return res.json();
   },
 
   async getReconciliation(id: string, workspaceId: string): Promise<Reconciliation> {
-    const res = await fetch(`${API_BASE}/reconciliations/${id}?workspace_id=${encodeURIComponent(workspaceId)}`);
+    const res = await apiFetch(`${API_BASE}/reconciliations/${id}?workspace_id=${encodeURIComponent(workspaceId)}`);
     return res.json();
   },
 
   async updateFindingStatus(id: string, status: string, workspaceId: string, note?: string): Promise<Finding> {
-    const res = await fetch(`${API_BASE}/findings/${id}?workspace_id=${encodeURIComponent(workspaceId)}`, {
+    const res = await apiFetch(`${API_BASE}/findings/${id}?workspace_id=${encodeURIComponent(workspaceId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: jsonBody({ status, note })
@@ -141,7 +154,7 @@ export const api = {
   },
 
   async correctLineMatch(id: string, workspaceId: string, poLineId?: string, markUnmatched = false, note?: string): Promise<any> {
-    const res = await fetch(`${API_BASE}/line-matches/${id}?workspace_id=${encodeURIComponent(workspaceId)}`, {
+    const res = await apiFetch(`${API_BASE}/line-matches/${id}?workspace_id=${encodeURIComponent(workspaceId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: jsonBody({ po_line_id: poLineId, mark_unmatched: markUnmatched, note })
@@ -150,7 +163,7 @@ export const api = {
   },
 
   async getPriceHistory(workspaceId: string): Promise<HistoricalPriceItem[]> {
-    const res = await fetch(`${API_BASE}/history/prices?workspace_id=${encodeURIComponent(workspaceId)}`);
+    const res = await apiFetch(`${API_BASE}/history/prices?workspace_id=${encodeURIComponent(workspaceId)}`);
     return res.json();
   },
 
@@ -158,12 +171,12 @@ export const api = {
     const params = new URLSearchParams();
     if (supplierKey) params.set('supplier_key', supplierKey);
     if (workspaceId) params.set('workspace_id', workspaceId);
-    const res = await fetch(`${API_BASE}/supplier-risk?${params.toString()}`);
+    const res = await apiFetch(`${API_BASE}/supplier-risk?${params.toString()}`);
     return res.json();
   },
 
   async getDisputeDraft(findingId: string, workspaceId: string): Promise<DisputeDraft> {
-    const res = await fetch(`${API_BASE}/findings/${findingId}/dispute-draft?workspace_id=${encodeURIComponent(workspaceId)}`);
+    const res = await apiFetch(`${API_BASE}/findings/${findingId}/dispute-draft?workspace_id=${encodeURIComponent(workspaceId)}`);
     if (!res.ok) {
       const error = await res.json().catch(() => ({ detail: 'Unable to generate dispute draft' }));
       throw new Error(error.detail || 'Unable to generate dispute draft');
@@ -172,12 +185,12 @@ export const api = {
   },
 
   async getBenchmark(): Promise<BenchmarkData> {
-    const res = await fetch(`${API_BASE}/evaluations/latest`);
+    const res = await apiFetch(`${API_BASE}/evaluations/latest`);
     return res.json();
   },
 
   async testNormalize(description: string, sku = ''): Promise<any> {
-    const res = await fetch(`${API_BASE}/evaluations/normalize-test`, {
+    const res = await apiFetch(`${API_BASE}/evaluations/normalize-test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: jsonBody({ description, sku })
@@ -186,7 +199,7 @@ export const api = {
   },
 
   async seedDemoScenario(): Promise<any> {
-    const res = await fetch(`${API_BASE}/demo/seed-sample-scenario`, { method: 'POST' });
+    const res = await apiFetch(`${API_BASE}/demo/seed-sample-scenario`, { method: 'POST' });
     return res.json();
   },
 
@@ -194,7 +207,7 @@ export const api = {
     const formData = new FormData();
     formData.append('file', file);
     if (workspaceId) formData.append('workspace_id', workspaceId);
-    const res = await fetch(`${API_BASE}/documents/invoices`, {
+    const res = await apiFetch(`${API_BASE}/documents/invoices`, {
       method: 'POST',
       body: formData
     });
@@ -208,7 +221,7 @@ export const api = {
   async previewPo(file: File): Promise<any> {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${API_BASE}/purchase-orders/import`, {
+    const res = await apiFetch(`${API_BASE}/purchase-orders/import`, {
       method: 'POST',
       body: formData
     });
@@ -228,7 +241,7 @@ export const api = {
     currency?: string;
     columns: Record<string, string>;
   }): Promise<any> {
-    const res = await fetch(`${API_BASE}/purchase-orders/confirm-import`, {
+    const res = await apiFetch(`${API_BASE}/purchase-orders/confirm-import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: jsonBody(data)

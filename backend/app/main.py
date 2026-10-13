@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from backend.app.config import settings
 from backend.app.database import init_db, get_db
 from backend.app.models import Workspace
-from backend.app.api import documents, reconciliations, history, evaluations, supplier_risk
+from backend.app.api import auth, documents, reconciliations, history, evaluations, supplier_risk
 
 app = FastAPI(
     title=settings.app_name,
@@ -18,7 +18,7 @@ app = FastAPI(
 # Enable CORS for development and deployed frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -36,11 +36,8 @@ def health_check():
 
 # Workspaces endpoint
 @app.get("/api/v1/workspaces/default")
-def get_default_workspace(db: Session = Depends(get_db)):
-    ws = db.query(Workspace).first()
-    if not ws:
-        init_db()
-        ws = db.query(Workspace).first()
+def get_default_workspace(user=Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    ws = auth.get_user_workspace(user, db)
     return {
         "id": ws.id,
         "name": ws.name,
@@ -49,6 +46,7 @@ def get_default_workspace(db: Session = Depends(get_db)):
     }
 
 # Mount API Routers under /api/v1
+app.include_router(auth.router, prefix="/api/v1")
 app.include_router(documents.router, prefix="/api/v1")
 app.include_router(reconciliations.router, prefix="/api/v1")
 app.include_router(history.router, prefix="/api/v1")

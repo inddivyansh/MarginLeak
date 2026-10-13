@@ -181,11 +181,19 @@ MarginLeak includes a ready-to-use **`render.yaml`** blueprint for one-click dep
 5. Add your environment variables:
   * `TINKER_API_KEY`: Thinking Machines Tinker API key, optional because the deterministic fallback remains available
   * `TINKER_MODEL_PATH`: Saved Tinker sampler path from the LoRA training run; when set, live normalization uses this artifact
+  * `SUPABASE_URL`, `SUPABASE_ANON_KEY`: Public Supabase project settings used by the frontend auth flow
+  * `SUPABASE_JWT_SECRET`: Supabase server secret used by FastAPI to verify access tokens; never expose this to the frontend
   * `BACKBOARD_API_KEY`: Optional Backboard integration key
   * `TABPFN_ENABLED`: Set to `true` only when the image includes `backend/requirements-tabpfn.txt`
   * `ENVIRONMENT`: `production`
 
 The Render blueprint uses the included Dockerfile and provisions a persistent PostgreSQL database. TabPFN remains disabled by default so the standard deployment stays lightweight; install `backend/requirements-tabpfn.txt` in a custom image when enabling it. Set `TINKER_MODEL_PATH` after a successful training run to use the saved sampler artifact in production.
+
+## Authentication and Data Isolation
+
+MarginLeak uses Supabase Auth for email/password signup, login, logout, and session restoration. The frontend sends the Supabase access token as a Bearer token on API requests. FastAPI verifies the token with `SUPABASE_JWT_SECRET`, maps the verified subject to a local user record, and creates a private workspace for a new user on first authenticated access.
+
+Every private route requires authentication and checks workspace membership on the server. Client-provided workspace IDs are filters, not authorization. Uploaded files use generated paths and PO preview keys are tied to the authenticated user. Configure the three Supabase variables before starting the app; without them the signed-out configuration screen remains visible.
 
 ---
 

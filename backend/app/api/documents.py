@@ -4,9 +4,10 @@ import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from sqlalchemy.orm import Session
+from backend.app.auth import get_authorized_workspace, get_current_user, get_user_workspace
 from backend.app.database import get_db
 from backend.app.config import settings
-from backend.app.models import Workspace, Document, Invoice, InvoiceLine, PurchaseOrder, PurchaseOrderLine
+from backend.app.models import Workspace, Document, Invoice, InvoiceLine, PurchaseOrder, PurchaseOrderLine, User
 from backend.app.schemas import DocumentResponse, PurchaseOrderResponse, InvoiceResponse, ColumnMappingRequest
 from backend.app.parser.pdf_parser import PDFInvoiceParser
 from backend.app.parser.csv_parser import PurchaseOrderFileParser
@@ -17,7 +18,8 @@ router = APIRouter(tags=["Documents"])
 async def upload_invoice(
     file: UploadFile = File(...),
     workspace_id: Optional[str] = Form(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     # Verify file extension
     if not file.filename.lower().endswith(".pdf"):
@@ -30,18 +32,7 @@ async def upload_invoice(
     sha256 = hashlib.sha256(content).hexdigest()
 
     # Get or create workspace
-    ws = None
-    if workspace_id:
-        ws = db.query(Workspace).filter(Workspace.id == workspace_id).first()
-        if not ws:
-            raise HTTPException(status_code=404, detail="Workspace not found.")
-    if not ws:
-        ws = db.query(Workspace).first()
-        if not ws:
-            ws = Workspace(name="Default Workspace", default_currency="USD")
-            db.add(ws)
-            db.commit()
-            db.refresh(ws)
+    ws = get_authorized_workspace(workspace_id, user, db) if workspace_id else get_user_workspace(user, db)
 
     # Save physical file
     file_path = os.path.join(settings.upload_dir, str(uuid.uuid4()))
@@ -118,7 +109,8 @@ async def upload_invoice(
 @router.post("/purchase-orders/import")
 async def preview_purchase_order(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     if not file.filename.lower().endswith((".csv", ".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Only CSV or Excel (.xlsx) purchase orders are supported.")
@@ -132,7 +124,7 @@ async def preview_purchase_order(
         raise HTTPException(status_code=422, detail=parsed["warnings"][0])
 
     # Cache temp file for confirmation
-    temp_path = os.path.join(settings.upload_dir, f"temp_{uuid.uuid4()}")
+    temp_path = os.path.join(settings.upload_dir, f"temp_{user.id}_{uuid.uuid4()}")
     with open(temp_path, "wb") as f:
         f.write(content)
 
@@ -151,12 +143,13 @@ async def preview_purchase_order(
 @router.post("/purchase-orders/confirm-import", response_model=PurchaseOrderResponse)
 async def confirm_purchase_order(
     req: ColumnMappingRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     temp_key = os.path.basename(req.temp_key)
     temp_path = os.path.abspath(os.path.join(settings.upload_dir, temp_key))
     upload_root = os.path.abspath(settings.upload_dir)
-    if not temp_key.startswith("temp_") or os.path.commonpath([temp_path, upload_root]) != upload_root:
+    if not temp_key.startswith(f"temp_{user.id}_") or os.path.commonpath([temp_path, upload_root]) != upload_root:
         raise HTTPException(status_code=400, detail="Invalid upload session key.")
     if not os.path.exists(temp_path):
         raise HTTPException(status_code=404, detail="Uploaded file session expired. Please re-upload.")
@@ -167,9 +160,7 @@ async def confirm_purchase_order(
     sha256 = hashlib.sha256(content).hexdigest()
     parsed = PurchaseOrderFileParser.parse_file(content, req.filename, custom_mapping=req.columns)
 
-    ws = db.query(Workspace).filter(Workspace.id == req.workspace_id).first()
-    if not ws:
-        raise HTTPException(status_code=404, detail="Workspace not found.")
+    ws = get_authorized_workspace(req.workspace_id, user, db)
 
     po_number = req.po_number or parsed["po_number"]
     supplier_name = req.supplier_name or "Standard Supplier"
@@ -226,18 +217,21 @@ async def confirm_purchase_order(
 
 
 @router.get("/documents", response_model=List[DocumentResponse])
-def list_documents(workspace_id: str, db: Session = Depends(get_db)):
+def list_documents(workspace_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    get_authorized_workspace(workspace_id, user, db)
     query = db.query(Document).filter(Document.workspace_id == workspace_id)
     return query.order_by(Document.created_at.desc()).all()
 
 
 @router.get("/invoices", response_model=List[InvoiceResponse])
-def list_invoices(workspace_id: str, db: Session = Depends(get_db)):
+def list_invoices(workspace_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    get_authorized_workspace(workspace_id, user, db)
     query = db.query(Invoice).filter(Invoice.workspace_id == workspace_id)
     return query.order_by(Invoice.created_at.desc()).all()
 
 
 @router.get("/purchase-orders", response_model=List[PurchaseOrderResponse])
-def list_purchase_orders(workspace_id: str, db: Session = Depends(get_db)):
+def list_purchase_orders(workspace_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    get_authorized_workspace(workspace_id, user, db)
     query = db.query(PurchaseOrder).filter(PurchaseOrder.workspace_id == workspace_id)
     return query.order_by(PurchaseOrder.created_at.desc()).all()

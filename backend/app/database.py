@@ -1,5 +1,3 @@
-import uuid
-from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from backend.app.config import settings
@@ -25,22 +23,7 @@ def get_db():
     finally:
         db.close()
 
+
 def init_db():
     from backend.app import models
     Base.metadata.create_all(bind=engine)
-    
-    # Create default demo workspace if none exists
-    db = SessionLocal()
-    try:
-        ws = db.query(models.Workspace).first()
-        if not ws:
-            default_ws = models.Workspace(
-                id=str(uuid.uuid4()),
-                name="Acme E-Commerce Retail",
-                default_currency=settings.default_currency,
-                created_at=datetime.utcnow()
-            )
-            db.add(default_ws)
-            db.commit()
-    finally:
-        db.close()

@@ -4,13 +4,16 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
+from backend.app.auth import get_authorized_workspace, get_current_user
 from backend.app.models import Invoice, InvoiceLine, Workspace
+from backend.app.models import User
 from backend.app.schemas import HistoricalPriceItem
 
 router = APIRouter(tags=["Price History"])
 
 @router.get("/history/prices", response_model=List[HistoricalPriceItem])
-def get_price_history(workspace_id: str, supplier_key: Optional[str] = None, db: Session = Depends(get_db)):
+def get_price_history(workspace_id: str, supplier_key: Optional[str] = None, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    get_authorized_workspace(workspace_id, user, db)
     query = db.query(InvoiceLine, Invoice).join(Invoice, InvoiceLine.invoice_id == Invoice.id)
 
     query = query.filter(Invoice.workspace_id == workspace_id)

@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     tinker_api_key: Optional[str] = None
     tinker_model_path: Optional[str] = None
     backboard_api_key: Optional[str] = None
+    supabase_url: Optional[str] = None
+    supabase_anon_key: Optional[str] = None
+    supabase_jwt_secret: Optional[str] = None
+    cors_origins: str = "http://localhost:5173"
     tabpfn_enabled: bool = False
     default_currency: str = "USD"
     price_tolerance_percent: float = 2.0

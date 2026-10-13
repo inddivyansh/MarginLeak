@@ -20,6 +20,14 @@ services:
         sync: false
       - key: TINKER_MODEL_PATH
         sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        value: "https://marginleak.onrender.com,http://localhost:5173"
       - key: BACKBOARD_API_KEY
         sync: false
       - key: PRICE_TOLERANCE_PERCENT
