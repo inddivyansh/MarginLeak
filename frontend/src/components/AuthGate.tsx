@@ -6,7 +6,20 @@ interface AuthGateProps {
   children: React.ReactNode;
 }
 
+export interface AuthContextType {
+  user: User | null;
+  signOut: () => Promise<void>;
+}
+
+export const AuthContext = React.createContext<AuthContextType>({
+  user: null,
+  signOut: async () => {},
+});
+
+export const useAuth = () => React.useContext(AuthContext);
+
 export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
+
   const [client, setClient] = useState<SupabaseClient | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -99,7 +112,20 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   };
 
   if (loading) return <div className="auth-shell"><div className="auth-panel"><span className="section-kicker">MARGINLEAK</span><h1>Verifying secure workspace</h1><p>Checking your authenticated session...</p></div></div>;
-  if (user) return <><button className="auth-logout" onClick={() => client?.auth.signOut()}>Sign Out</button>{children}</>;
+  if (user) {
+    return (
+      <AuthContext.Provider
+        value={{
+          user,
+          signOut: async () => {
+            await client?.auth.signOut();
+          },
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
+    );
+  }
 
   return (
     <div className="auth-shell">

@@ -145,7 +145,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, works
               </div>
             </label>
 
-            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <div className="modal-footer-actions">
               <button className="btn btn-secondary" onClick={onClose} disabled={isLoading}>
                 Cancel
               </button>
@@ -185,7 +185,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, works
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <div className="modal-footer-actions">
               <button className="btn btn-secondary" onClick={() => setPoPreview(null)}>Back</button>
               <button className="btn btn-primary" onClick={handlePoConfirm} disabled={isLoading}>
                 {isLoading ? 'Importing...' : 'Confirm & Save Purchase Order'}

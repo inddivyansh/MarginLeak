@@ -41,7 +41,7 @@ export const DisputeDraftModal: React.FC<DisputeDraftModalProps> = ({ draft, onC
         <label className="modal-field-label">MESSAGE</label>
         <textarea className="modal-textarea" value={draft.body} readOnly rows={16} />
 
-        <div style={{ display: 'flex', gap: '0.65rem', justifyContent: 'flex-end', marginTop: '1rem', flexWrap: 'wrap' }}>
+        <div className="modal-footer-actions">
           <button className="btn btn-secondary" onClick={copyDraft}>
             <Copy size={14} />
             <span>{copied ? 'Copied' : 'Copy Letter'}</span>

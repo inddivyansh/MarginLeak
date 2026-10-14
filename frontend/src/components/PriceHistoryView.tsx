@@ -9,7 +9,7 @@ interface PriceHistoryViewProps {
 export const PriceHistoryView: React.FC<PriceHistoryViewProps> = ({ historyItems }) => {
   return (
     <div className="glass-panel" style={{ padding: '1.5rem' }}>
-      <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="view-header-row">
         <div>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <History size={18} color="#38bdf8" />
@@ -29,19 +29,23 @@ export const PriceHistoryView: React.FC<PriceHistoryViewProps> = ({ historyItems
           No historical supplier purchases recorded yet. Upload historical invoices or load demo data to initialize price memory.
         </div>
       ) : (
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Product Description</th>
-                <th>Supplier</th>
-                <th>Purchases</th>
-                <th>Median Baseline</th>
-                <th>Price Range</th>
-                <th>Latest Billed</th>
-                <th>Trend</th>
-              </tr>
-            </thead>
+        <>
+          <div className="mobile-scroll-hint">
+            <span>⇄ Swipe horizontally to inspect price history table</span>
+          </div>
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th className="col-desc">Product Description</th>
+                  <th className="col-supp">Supplier</th>
+                  <th className="col-purch">Purchases</th>
+                  <th className="col-median">Median Baseline</th>
+                  <th className="col-range">Price Range</th>
+                  <th className="col-latest">Latest Billed</th>
+                  <th className="col-trend">Trend</th>
+                </tr>
+              </thead>
             <tbody>
               {historyItems.map((item, idx) => {
                 const diffFromMedian = item.latest_unit_price - item.median_unit_price;
@@ -101,6 +105,7 @@ export const PriceHistoryView: React.FC<PriceHistoryViewProps> = ({ historyItems
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

@@ -203,3 +203,23 @@ def test_verified_user_gets_private_workspace_once(monkeypatch, db_session):
     assert len(first_user.memberships) == 1
     assert first_user.memberships[0].workspace.name == "owner's Workspace"
     assert db_session.query(models.Workspace).count() == 1
+
+
+def test_seed_sample_scenario_creates_full_audit(db_session):
+    user = models.User(id="user-demo", external_id="external-demo", email="demo@example.com")
+    db_session.add(user)
+    db_session.commit()
+
+    from backend.app.api.evaluations import seed_sample_scenario
+    res = seed_sample_scenario(db=db_session, user=user)
+
+    assert res["status"] == "success"
+    assert res["findings_count"] == 4
+    assert float(res["amount_at_risk"]) == 1790.0
+
+    recon = db_session.query(models.Reconciliation).filter_by(id=res["reconciliation_id"]).first()
+    assert recon is not None
+    assert recon.workspace_id == res["workspace_id"]
+    assert len(recon.findings) == 4
+    assert len(recon.matches) == 4
+

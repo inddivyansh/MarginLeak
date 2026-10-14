@@ -34,16 +34,20 @@ export const ReconciliationTableView: React.FC<ReconciliationTableViewProps> = (
         </p>
       </div>
 
+      <div className="mobile-scroll-hint">
+        <span>⇄ Swipe horizontally to inspect full reconciliation table</span>
+      </div>
+
       <div className="table-container">
         <table className="data-table">
           <thead>
             <tr>
-              <th>Line</th>
-              <th>Billed Invoice Line</th>
-              <th>Matched Purchase Order Line</th>
-              <th>Method & Confidence</th>
-              <th>Variance</th>
-              <th>Review</th>
+              <th className="col-line">Line</th>
+              <th className="col-invoice">Billed Invoice Line</th>
+              <th className="col-po">Matched Purchase Order Line</th>
+              <th className="col-method">Method & Confidence</th>
+              <th className="col-variance">Variance</th>
+              <th className="col-review">Review</th>
             </tr>
           </thead>
           <tbody>

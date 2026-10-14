@@ -13,6 +13,23 @@ async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promi
   return response;
 }
 
+async function handleResponse<T = any>(res: Response): Promise<T> {
+  if (!res.ok) {
+    let detail = `Request failed (${res.status} ${res.statusText})`;
+    try {
+      const err = await res.json();
+      detail = err.detail || err.message || detail;
+    } catch {
+      const text = await res.text().catch(() => '');
+      if (text) {
+        detail = text.slice(0, 200).trim();
+      }
+    }
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
 export interface Finding {
   id: string;
   reconciliation_id: string;
@@ -131,17 +148,17 @@ export interface DisputeDraft {
 export const api = {
   async getWorkspace(): Promise<{ id: string; name: string; default_currency: string }> {
     const res = await apiFetch(`${API_BASE}/workspaces/default`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async getReconciliations(workspaceId: string): Promise<Reconciliation[]> {
     const res = await apiFetch(`${API_BASE}/reconciliations?workspace_id=${encodeURIComponent(workspaceId)}`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async getReconciliation(id: string, workspaceId: string): Promise<Reconciliation> {
     const res = await apiFetch(`${API_BASE}/reconciliations/${id}?workspace_id=${encodeURIComponent(workspaceId)}`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async updateFindingStatus(id: string, status: string, workspaceId: string, note?: string): Promise<Finding> {
@@ -150,7 +167,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: jsonBody({ status, note })
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   async correctLineMatch(id: string, workspaceId: string, poLineId?: string, markUnmatched = false, note?: string): Promise<any> {
@@ -159,12 +176,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: jsonBody({ po_line_id: poLineId, mark_unmatched: markUnmatched, note })
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   async getPriceHistory(workspaceId: string): Promise<HistoricalPriceItem[]> {
     const res = await apiFetch(`${API_BASE}/history/prices?workspace_id=${encodeURIComponent(workspaceId)}`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async getSupplierRisk(supplierKey?: string, workspaceId?: string): Promise<SupplierRisk> {
@@ -172,21 +189,17 @@ export const api = {
     if (supplierKey) params.set('supplier_key', supplierKey);
     if (workspaceId) params.set('workspace_id', workspaceId);
     const res = await apiFetch(`${API_BASE}/supplier-risk?${params.toString()}`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async getDisputeDraft(findingId: string, workspaceId: string): Promise<DisputeDraft> {
     const res = await apiFetch(`${API_BASE}/findings/${findingId}/dispute-draft?workspace_id=${encodeURIComponent(workspaceId)}`);
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({ detail: 'Unable to generate dispute draft' }));
-      throw new Error(error.detail || 'Unable to generate dispute draft');
-    }
-    return res.json();
+    return handleResponse(res);
   },
 
   async getBenchmark(): Promise<BenchmarkData> {
     const res = await apiFetch(`${API_BASE}/evaluations/latest`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async testNormalize(description: string, sku = ''): Promise<any> {
@@ -195,12 +208,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: jsonBody({ description, sku })
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   async seedDemoScenario(): Promise<any> {
     const res = await apiFetch(`${API_BASE}/demo/seed-sample-scenario`, { method: 'POST' });
-    return res.json();
+    return handleResponse(res);
   },
 
   async uploadInvoicePdf(file: File, workspaceId?: string): Promise<any> {
@@ -246,7 +259,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: jsonBody(data)
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   getReportDownloadUrl(reconciliationId: string, workspaceId: string): string {

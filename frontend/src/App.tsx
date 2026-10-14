@@ -7,7 +7,7 @@ import { ReconciliationTableView } from './components/ReconciliationTableView';
 import { PriceHistoryView } from './components/PriceHistoryView';
 import { TinkerBenchmarkView } from './components/TinkerBenchmarkView';
 import { UploadModal } from './components/UploadModal';
-import { AlertTriangle, Layers, History, Cpu, Sparkles, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Layers, History, Cpu, Sparkles, CheckCircle2, RefreshCw } from 'lucide-react';
 
 export function App() {
   const [workspace, setWorkspace] = useState<{ id: string; name: string; default_currency: string }>({
@@ -114,28 +114,19 @@ export function App() {
 
       {/* Top Demo Notification Banner if no active reconciliation */}
       {!activeRecon && (
-        <div className="glass-panel" style={{
-          padding: '1.25rem 1.5rem',
-          marginBottom: '2rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderLeft: '4px solid #f59e0b',
-          flexWrap: 'wrap',
-          gap: '1rem'
-        }}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#fde68a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className="glass-panel demo-banner">
+          <div className="demo-banner-content">
+            <div className="demo-banner-title">
               <Sparkles size={16} />
               <span>Welcome to MarginLeak — Instant Test Scenario Available</span>
             </div>
-            <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+            <div className="demo-banner-desc">
               Experience the full audit workflow with 1 click. Loads a realistic Shenzhen Apex supplier invoice with unit price, quantity, and duplicate anomalies.
             </div>
           </div>
-          <button className="btn btn-primary" onClick={handleSeedDemo} disabled={isSeeding}>
-            <Sparkles size={15} />
-            <span>Load Live Demo Data</span>
+          <button className="btn btn-primary demo-banner-btn" onClick={handleSeedDemo} disabled={isSeeding}>
+            {isSeeding ? <RefreshCw size={15} className="spin" /> : <Sparkles size={15} />}
+            <span>{isSeeding ? 'Seeding...' : 'Load Live Demo Data'}</span>
           </button>
         </div>
       )}
@@ -192,7 +183,8 @@ export function App() {
           onClick={() => setActiveTab('benchmark')}
         >
           <Cpu size={16} />
-          <span>Thinking Machines Tinker Benchmark</span>
+          <span className="tab-label-full">Thinking Machines Tinker Benchmark</span>
+          <span className="tab-label-short">Tinker Benchmark</span>
         </button>
       </div>
 

@@ -221,7 +221,7 @@ def seed_sample_scenario(db: Session = Depends(get_db), user: User = Depends(get
     }
     from backend.app.api.reconciliations import create_reconciliation
     from backend.app.schemas import ReconciliationCreateRequest
-    recon_res = create_reconciliation(ReconciliationCreateRequest(**req), db)
+    recon_res = create_reconciliation(ReconciliationCreateRequest(**req), db, user=user)
 
     return {
         "status": "success",

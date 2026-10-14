@@ -71,20 +71,22 @@ export const DiscrepancyView: React.FC<DiscrepancyViewProps> = ({ findings, work
   return (
     <div>
       {/* Filter Chips Bar */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', fontWeight: 600 }}>FILTER TYPE:</span>
-        {['ALL', 'PRICE_MISMATCH', 'QUANTITY_MISMATCH', 'DUPLICATE_CANDIDATE', 'HISTORICAL_PRICE_ANOMALY', 'AMBIGUOUS_MATCH'].map(t => (
-          <button
-            key={t}
-            onClick={() => setFilterType(t)}
-            className={`btn btn-sm ${filterType === t ? 'btn-primary' : 'btn-secondary'}`}
-          >
-            {t === 'ALL' ? 'All Findings' : getTypeLabel(t)}
-          </button>
-        ))}
+      <div className="findings-filter-bar">
+        <div className="filter-chips-group">
+          <span className="filter-label">FILTER TYPE:</span>
+          {['ALL', 'PRICE_MISMATCH', 'QUANTITY_MISMATCH', 'DUPLICATE_CANDIDATE', 'HISTORICAL_PRICE_ANOMALY', 'AMBIGUOUS_MATCH'].map(t => (
+            <button
+              key={t}
+              onClick={() => setFilterType(t)}
+              className={`btn btn-sm ${filterType === t ? 'btn-primary' : 'btn-secondary'}`}
+            >
+              {t === 'ALL' ? 'All Findings' : getTypeLabel(t)}
+            </button>
+          ))}
+        </div>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', fontWeight: 600 }}>STATUS:</span>
+        <div className="status-chips-group">
+          <span className="filter-label">STATUS:</span>
           {['ALL', 'open', 'confirmed', 'dismissed'].map(s => (
             <button
               key={s}
@@ -165,7 +167,7 @@ export const DiscrepancyView: React.FC<DiscrepancyViewProps> = ({ findings, work
                 )}
 
                 {/* Reviewer Action Buttons */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                <div className="finding-actions">
                   {f.status === 'open' && (
                     <>
                       <button
@@ -214,25 +216,17 @@ export const DiscrepancyView: React.FC<DiscrepancyViewProps> = ({ findings, work
 
                 {/* Dismissal Note Drawer */}
                 {dismissNoteId === f.id && (
-                  <div style={{ marginTop: '0.85rem', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                  <div className="dismissal-drawer">
+                    <div className="dismissal-prompt">
                       Add explanation for dismissing discrepancy (e.g. "Approved freight allowance", "Contractual price revision"):
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div className="dismissal-form">
                       <input
                         type="text"
                         placeholder="Reason for dismissal..."
                         value={dismissNoteText}
                         onChange={(e) => setDismissNoteText(e.target.value)}
-                        style={{
-                          flex: 1,
-                          padding: '0.5rem 0.75rem',
-                          borderRadius: '6px',
-                          border: '1px solid var(--border-subtle)',
-                          background: '#090d16',
-                          color: '#fff',
-                          fontSize: '0.85rem'
-                        }}
+                        className="dismissal-input"
                       />
                       <button className="btn btn-sm btn-primary" onClick={() => handleDismissSubmit(f.id)}>
                         Confirm Dismissal

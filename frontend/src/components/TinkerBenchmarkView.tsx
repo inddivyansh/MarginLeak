@@ -77,7 +77,7 @@ export const TinkerBenchmarkView: React.FC<TinkerBenchmarkViewProps> = ({ benchm
         </p>
 
         {/* 3 Pillar Summary */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', marginTop: '1.5rem' }}>
+        <div className="benchmark-summary-grid">
           <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid #6366f1' }}>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', fontWeight: 700 }}>FIELD ACCURACY GAIN</div>
             <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#a5b4fc', margin: '0.25rem 0' }}>+16.8 pts</div>
@@ -103,6 +103,10 @@ export const TinkerBenchmarkView: React.FC<TinkerBenchmarkViewProps> = ({ benchm
         <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1.25rem' }}>
           Model Benchmark Matrix (Held-Out Evaluation)
         </h3>
+
+        <div className="mobile-scroll-hint">
+          <span>⇄ Swipe horizontally to inspect model benchmark matrix</span>
+        </div>
 
         <div className="table-container">
           <table className="data-table">
@@ -168,7 +172,7 @@ export const TinkerBenchmarkView: React.FC<TinkerBenchmarkViewProps> = ({ benchm
           Type any messy, abbreviated, or vendor-specific line item description below to inspect how the model normalizes it into strict canonical JSON.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+        <div className="sandbox-grid">
           <div>
             <div style={{ marginBottom: '0.75rem' }}>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', fontWeight: 600 }}>RAW SUPPLIER DESCRIPTION:</label>
