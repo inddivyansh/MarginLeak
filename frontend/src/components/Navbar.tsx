@@ -31,10 +31,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="brand-title">MarginLeak</div>
           <div className="brand-tagline">Autonomous AP Leakage Auditor</div>
         </div>
-        <div className="badge badge-tinker badge-pulse brand-badge">
+        <div className="badge badge-tinker badge-pulse brand-badge" title="Autonomous AI Audit Engine is actively protecting payments">
           <Cpu size={13} />
-          <span className="badge-text-full">Tinker LoRA Qwen3-8B</span>
-          <span className="badge-text-compact">Tinker LoRA</span>
+          <span className="badge-text-full">AI Audit Guard Active</span>
+          <span className="badge-text-compact">AI Guard</span>
         </div>
       </div>
 

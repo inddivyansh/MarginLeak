@@ -147,7 +147,7 @@ export function App() {
           <div className="supplier-risk-metrics">
             <span>{Math.round(supplierRisk.overbilling_probability * 100)}% overbilling probability</span>
             <span>{Math.round(supplierRisk.dispute_win_probability * 100)}% dispute win probability</span>
-            <small>{supplierRisk.model_provider} · {supplierRisk.sample_count} invoices</small>
+            <small>Automated risk assessment across {supplierRisk.sample_count} supplier invoices</small>
           </div>
         </div>
       )}
@@ -183,8 +183,8 @@ export function App() {
           onClick={() => setActiveTab('benchmark')}
         >
           <Cpu size={16} />
-          <span className="tab-label-full">Thinking Machines Tinker Benchmark</span>
-          <span className="tab-label-short">Tinker Benchmark</span>
+          <span className="tab-label-full">AI Audit Intelligence</span>
+          <span className="tab-label-short">AI Intelligence</span>
         </button>
       </div>
 

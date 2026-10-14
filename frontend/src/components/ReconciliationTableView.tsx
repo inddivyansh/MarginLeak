@@ -13,13 +13,13 @@ export const ReconciliationTableView: React.FC<ReconciliationTableViewProps> = (
   const getMethodBadge = (method: string) => {
     switch (method) {
       case 'exact_sku':
-        return <span className="badge badge-success">Exact SKU (100%)</span>;
+        return <span className="badge badge-success">Exact SKU Match</span>;
       case 'supplier_alias':
         return <span className="badge badge-info">Supplier Alias</span>;
       case 'model_normalization':
-        return <span className="badge badge-tinker">Tinker LoRA</span>;
+        return <span className="badge badge-tinker">AI Semantic Match</span>;
       case 'fuzzy_token':
-        return <span className="badge badge-warning">Fuzzy Token</span>;
+        return <span className="badge badge-warning">Fuzzy Match</span>;
       default:
         return <span className="badge badge-danger">Unmatched</span>;
     }

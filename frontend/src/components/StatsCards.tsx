@@ -67,10 +67,10 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ reconciliation, accuracy
         </div>
       </div>
 
-      {/* 4. Tinker AI Precision */}
+      {/* 4. AI Audit Accuracy */}
       <div className="stat-card glass-panel" style={{ '--card-accent': '#6366f1' } as React.CSSProperties}>
         <div className="stat-header">
-          <span className="stat-label">Tinker LoRA Model Accuracy</span>
+          <span className="stat-label">AI Audit Accuracy</span>
           <div className="stat-icon" style={{ background: 'rgba(99, 102, 241, 0.15)' }}>
             <TrendingUp size={20} color="#6366f1" />
           </div>
@@ -79,8 +79,8 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ reconciliation, accuracy
           93.6%
         </div>
         <div className="stat-subtext">
-          <span style={{ color: '#10b981', fontWeight: 700 }}>+{accuracyGain} pts gain</span>
-          <span>vs Base Qwen3-8B</span>
+          <span style={{ color: '#10b981', fontWeight: 700 }}>+{accuracyGain} pts boost</span>
+          <span>in line verification</span>
         </div>
       </div>
     </div>
