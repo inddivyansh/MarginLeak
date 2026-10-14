@@ -335,31 +335,6 @@ MarginLeak includes a ready-to-use [`render.yaml`](file:///c:/Users/divya/DataDr
 
 ---
 
-## 🤖 Verified DevRelay AI Agent Session
-
-This entire application—from backend architecture and Tinker fine-tuning scripts to Supabase authentication debugging, Docker packaging, and UI components—was developed collaboratively with AI agent assistance and recorded via [DevRelay](https://devrelay.com/).
-
-* 🔗 **DEV Agent Session**: [https://dev.to/agent_sessions/marginleak-autonomous-accounts-payable-ai-auditor-3800ko](https://dev.to/agent_sessions/marginleak-autonomous-accounts-payable-ai-auditor-3800ko)
-* 🆔 **Session ID**: `878`
-* 📊 **Scope**: 26 curated, high-value engineering messages (13 deep architectural and ML milestones)
-
-### Interactive Liquid Tag Embeds
-The session can be embedded directly in any DEV article using DEV's native Liquid tags:
-
-```liquid
-{% agent_session 878 %}
-```
-
-Or embedded by curated milestone slices:
-- **TabPFN Anomaly Scoring & Dispute UI**: `{% agent_session 878 0..2 %}`
-- **Render Multi-Stage Docker Packaging**: `{% agent_session 878 3..6 %}`
-- **Tinker LoRA Fine-Tuning SDK**: `{% agent_session 878 7..12 %}`
-- **Supabase Auth & Workspace Tenancy**: `{% agent_session 878 13..16 %}`
-- **Model Loss & Convergence Trajectory**: `{% agent_session 878 17..20 %}`
-- **Origin Redirection & DevRelay Registration**: `{% agent_session 878 21..25 %}`
-
----
-
 ## 📜 License
 
 Distributed under the **MIT License**. See [`LICENSE`](file:///c:/Users/divya/DataDrive/Study/Projects/Hacktoberfest/LICENSE) for more information.
