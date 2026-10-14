@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" width="100%" height="100%" style="background:#0b0f19;border-radius:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d1322"/>
+      <stop offset="50%" stop-color="#0b0f19"/>
+      <stop offset="100%" stop-color="#070a11"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="50%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="alertGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+    <linearGradient id="successGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="laserGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#818cf8" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Filters -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+
+    <style>
+      @keyframes scan {
+        0% { transform: translateY(0px); opacity: 0; }
+        15% { opacity: 1; }
+        85% { opacity: 1; }
+        100% { transform: translateY(180px); opacity: 0; }
+      }
+      @keyframes pulseGlow {
+        0%, 100% { opacity: 0.4; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.03); }
+      }
+      @keyframes alertPulse {
+        0%, 100% { filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.4)); }
+        50% { filter: drop-shadow(0 0 14px rgba(239, 68, 68, 0.85)); }
+      }
+      @keyframes dotBlink {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 1; }
+      }
+      .laser-line {
+        animation: scan 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+      .alert-card {
+        animation: alertPulse 2.5s ease-in-out infinite;
+      }
+      .glow-orb {
+        animation: pulseGlow 6s ease-in-out infinite alternate;
+      }
+      .blinking-dot {
+        animation: dotBlink 1.8s ease-in-out infinite;
+      }
+    </style>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="900" height="420" rx="16" fill="url(#bgGrad)"/>
+
+  <!-- Subtle Grid Pattern -->
+  <g opacity="0.07" stroke="#94a3b8" stroke-width="1">
+    <line x1="60" y1="0" x2="60" y2="420"/>
+    <line x1="180" y1="0" x2="180" y2="420"/>
+    <line x1="300" y1="0" x2="300" y2="420"/>
+    <line x1="420" y1="0" x2="420" y2="420"/>
+    <line x1="540" y1="0" x2="540" y2="420"/>
+    <line x1="660" y1="0" x2="660" y2="420"/>
+    <line x1="780" y1="0" x2="780" y2="420"/>
+    <line x1="0" y1="70" x2="900" y2="70"/>
+    <line x1="0" y1="140" x2="900" y2="140"/>
+    <line x1="0" y1="210" x2="900" y2="210"/>
+    <line x1="0" y1="280" x2="900" y2="280"/>
+    <line x1="0" y1="350" x2="900" y2="350"/>
+  </g>
+
+  <!-- Ambient Glow Orbs -->
+  <circle cx="140" cy="100" r="120" fill="#4f46e5" opacity="0.18" filter="url(#glow)" class="glow-orb"/>
+  <circle cx="760" cy="300" r="140" fill="#7c3aed" opacity="0.15" filter="url(#glow)" class="glow-orb"/>
+  <circle cx="480" cy="220" r="100" fill="#06b6d4" opacity="0.12" filter="url(#glow)" class="glow-orb"/>
+
+  <!-- Header Section -->
+  <g transform="translate(45, 45)">
+    <!-- Pill Badge -->
+    <rect width="180" height="26" rx="13" fill="#1e1b4b" stroke="#4338ca" stroke-width="1"/>
+    <circle cx="14" cy="13" r="4" fill="#38bdf8" class="blinking-dot"/>
+    <text x="26" y="17" fill="#a5b4fc" font-size="11" font-weight="600" letter-spacing="1.2">AUTONOMOUS AUDITOR</text>
+
+    <!-- Main Title -->
+    <text x="0" y="65" fill="#f8fafc" font-size="34" font-weight="800" letter-spacing="-0.8">
+      Margin<tspan fill="url(#accentGrad)">Leak</tspan>
+    </text>
+    <text x="0" y="90" fill="#94a3b8" font-size="14" font-weight="400">
+      Stop accounts-payable leakage before paying supplier invoices with open-weight AI.
+    </text>
+  </g>
+
+  <!-- Live Stats Strip -->
+  <g transform="translate(480, 42)">
+    <!-- Metric 1 -->
+    <rect x="0" y="0" width="115" height="56" rx="10" fill="#131c31" stroke="#1e293b" stroke-width="1" filter="url(#cardShadow)"/>
+    <text x="14" y="22" fill="#64748b" font-size="11" font-weight="500">EXPOSURE FOUND</text>
+    <text x="14" y="44" fill="#f87171" font-size="18" font-weight="700">$3,420.50</text>
+
+    <!-- Metric 2 -->
+    <rect x="125" y="0" width="115" height="56" rx="10" fill="#131c31" stroke="#1e293b" stroke-width="1" filter="url(#cardShadow)"/>
+    <text x="139" y="22" fill="#64748b" font-size="11" font-weight="500">TABPFN WIN RATE</text>
+    <text x="139" y="44" fill="#34d399" font-size="18" font-weight="700">89.4%</text>
+
+    <!-- Metric 3 -->
+    <rect x="250" y="0" width="125" height="56" rx="10" fill="#131c31" stroke="#1e293b" stroke-width="1" filter="url(#cardShadow)"/>
+    <text x="264" y="22" fill="#64748b" font-size="11" font-weight="500">MATH ACCURACY</text>
+    <text x="264" y="44" fill="#38bdf8" font-size="18" font-weight="700">100.0%</text>
+  </g>
+
+  <!-- Interactive Visual Workflow Deck -->
+
+  <!-- Panel 1: Document Ingestion & Laser Scanning -->
+  <g transform="translate(45, 160)">
+    <rect width="250" height="215" rx="12" fill="#111827" stroke="#1e293b" stroke-width="1.5" filter="url(#cardShadow)"/>
+    <!-- Card Header -->
+    <rect width="250" height="38" rx="12" fill="#161f36"/>
+    <path d="M 0 26 L 0 38 L 250 38 L 250 26 Z" fill="#161f36"/>
+    <circle cx="18" cy="19" r="4" fill="#ef4444"/>
+    <circle cx="30" cy="19" r="4" fill="#f59e0b"/>
+    <circle cx="42" cy="19" r="4" fill="#10b981"/>
+    <text x="56" y="23" fill="#cbd5e1" font-size="11" font-weight="600">INVOICE_OCT2026.PDF</text>
+
+    <!-- Simulated Document Lines -->
+    <g transform="translate(18, 55)">
+      <rect x="0" y="0" width="130" height="8" rx="3" fill="#334155"/>
+      <rect x="170" y="0" width="44" height="8" rx="3" fill="#334155"/>
+
+      <rect x="0" y="20" width="160" height="7" rx="3" fill="#1e293b"/>
+      <rect x="180" y="20" width="34" height="7" rx="3" fill="#1e293b"/>
+
+      <!-- Highlighted Line with Discrepancy -->
+      <rect x="-6" y="38" width="226" height="24" rx="5" fill="#450a0a" stroke="#dc2626" stroke-width="1" opacity="0.8"/>
+      <text x="2" y="54" fill="#fca5a5" font-size="10" font-family="monospace">CRG-055 HY TONER 75x @ $18.50</text>
+
+      <rect x="0" y="74" width="140" height="7" rx="3" fill="#1e293b"/>
+      <rect x="170" y="74" width="44" height="7" rx="3" fill="#1e293b"/>
+
+      <rect x="0" y="94" width="155" height="7" rx="3" fill="#1e293b"/>
+      <rect x="180" y="94" width="34" height="7" rx="3" fill="#1e293b"/>
+
+      <rect x="0" y="114" width="110" height="7" rx="3" fill="#1e293b"/>
+      <rect x="160" y="114" width="54" height="7" rx="3" fill="#1e293b"/>
+
+      <!-- PyMuPDF Bounding Box Coordinate Marker -->
+      <rect x="140" y="132" width="74" height="16" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+      <text x="146" y="144" fill="#38bdf8" font-size="9" font-family="monospace">Page 1 [82,14]</text>
+    </g>
+
+    <!-- Animated Scanning Laser Line -->
+    <g class="laser-line">
+      <rect x="2" y="40" width="246" height="2" fill="url(#laserGrad)"/>
+    </g>
+  </g>
+
+  <!-- Flow Arrow 1 -->
+  <g transform="translate(305, 260)">
+    <circle cx="12" cy="0" r="14" fill="#1e1b4b" stroke="#6366f1" stroke-width="1"/>
+    <path d="M 9 -5 L 15 0 L 9 5" fill="none" stroke="#a5b4fc" stroke-width="2" stroke-linecap="round"/>
+  </g>
+
+  <!-- Panel 2: Normalization & Matching Engine -->
+  <g transform="translate(340, 160)">
+    <rect width="240" height="215" rx="12" fill="#111827" stroke="#1e293b" stroke-width="1.5" filter="url(#cardShadow)"/>
+    <rect width="240" height="38" rx="12" fill="#161f36"/>
+    <path d="M 0 26 L 0 38 L 240 38 L 240 26 Z" fill="#161f36"/>
+    <text x="18" y="23" fill="#c084fc" font-size="11" font-weight="700">TINKER LoRA + TABPFN</text>
+
+    <g transform="translate(18, 55)">
+      <!-- Step 1 -->
+      <rect x="0" y="0" width="204" height="42" rx="7" fill="#0d1424" stroke="#334155" stroke-width="1"/>
+      <text x="10" y="17" fill="#94a3b8" font-size="9" font-weight="600">QWEN3-8B CANONICAL NORMALIZER</text>
+      <text x="10" y="32" fill="#38bdf8" font-size="11" font-family="monospace">High-Yield Toner (Canon 055H)</text>
+
+      <!-- Step 2 -->
+      <rect x="0" y="52" width="204" height="42" rx="7" fill="#0d1424" stroke="#334155" stroke-width="1"/>
+      <text x="10" y="69" fill="#94a3b8" font-size="9" font-weight="600">RAPIDFUZZ PO ALIGNMENT</text>
+      <text x="10" y="84" fill="#a7f3d0" font-size="11" font-family="monospace">Match PO #PO-1049 (98.2%)</text>
+
+      <!-- Step 3 TabPFN -->
+      <rect x="0" y="104" width="204" height="42" rx="7" fill="#0d1424" stroke="#4338ca" stroke-width="1"/>
+      <text x="10" y="121" fill="#818cf8" font-size="9" font-weight="600">TABPFN BAYESIAN RISK MODEL</text>
+      <text x="10" y="136" fill="#fcd34d" font-size="11" font-weight="600">Supplier Risk: ELEVATED</text>
+    </g>
+  </g>
+
+  <!-- Flow Arrow 2 -->
+  <g transform="translate(590, 260)">
+    <circle cx="12" cy="0" r="14" fill="#1e1b4b" stroke="#6366f1" stroke-width="1"/>
+    <path d="M 9 -5 L 15 0 L 9 5" fill="none" stroke="#a5b4fc" stroke-width="2" stroke-linecap="round"/>
+  </g>
+
+  <!-- Panel 3: Deterministic Finding & Auto Dispute -->
+  <g transform="translate(625, 160)" class="alert-card">
+    <rect width="230" height="215" rx="12" fill="#151221" stroke="#dc2626" stroke-width="1.5" filter="url(#cardShadow)"/>
+    <rect width="230" height="38" rx="12" fill="#2d1217"/>
+    <path d="M 0 26 L 0 38 L 230 38 L 230 26 Z" fill="#2d1217"/>
+    <circle cx="16" cy="19" r="4" fill="#ef4444" class="blinking-dot"/>
+    <text x="26" y="23" fill="#fca5a5" font-size="11" font-weight="700">AUDIT FINDING DETECTED</text>
+
+    <g transform="translate(16, 52)">
+      <!-- Badge -->
+      <rect x="0" y="0" width="105" height="18" rx="4" fill="#991b1b"/>
+      <text x="6" y="13" fill="#fee2e2" font-size="9" font-weight="700">PRICE_MISMATCH</text>
+
+      <!-- Amount -->
+      <text x="0" y="44" fill="#ef4444" font-size="24" font-weight="800">+$187.50</text>
+      <text x="0" y="60" fill="#94a3b8" font-size="10" font-family="monospace">($18.50 - $16.00) × 75 Qty</text>
+
+      <!-- Auto Credit Memo Button -->
+      <rect x="0" y="80" width="198" height="32" rx="6" fill="#4f46e5"/>
+      <text x="28" y="100" fill="#ffffff" font-size="10" font-weight="700">✉ GENERATE DISPUTE LETTER</text>
+
+      <rect x="0" y="120" width="198" height="24" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+      <text x="8" y="136" fill="#34d399" font-size="10" font-weight="600">✓ Credit Memo Ready to Send</text>
+    </g>
+  </g>
+</svg>
