@@ -7,7 +7,7 @@ import { ReconciliationTableView } from './components/ReconciliationTableView';
 import { PriceHistoryView } from './components/PriceHistoryView';
 import { TinkerBenchmarkView } from './components/TinkerBenchmarkView';
 import { UploadModal } from './components/UploadModal';
-import { AlertTriangle, Layers, History, Cpu, Sparkles, CheckCircle2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Layers, History, Cpu, Sparkles, CheckCircle2, RefreshCw, Upload } from 'lucide-react';
 
 export function App() {
   const [workspace, setWorkspace] = useState<{ id: string; name: string; default_currency: string }>({
@@ -112,105 +112,114 @@ export function App() {
         hasReconciliation={!!activeRecon}
       />
 
-      {/* Top Demo Notification Banner if no active reconciliation */}
-      {!activeRecon && (
-        <div className="glass-panel demo-banner">
-          <div className="demo-banner-content">
-            <div className="demo-banner-title">
-              <Sparkles size={16} />
-              <span>Welcome to MarginLeak — Instant Test Scenario Available</span>
-            </div>
-            <div className="demo-banner-desc">
-              Experience the full audit workflow with 1 click. Loads a realistic Shenzhen Apex supplier invoice with unit price, quantity, and duplicate anomalies.
-            </div>
-          </div>
-          <button className="btn btn-primary demo-banner-btn" onClick={handleSeedDemo} disabled={isSeeding}>
-            {isSeeding ? <RefreshCw size={15} className="spin" /> : <Sparkles size={15} />}
-            <span>{isSeeding ? 'Seeding...' : 'Load Live Demo Data'}</span>
-          </button>
-        </div>
-      )}
-
-      {/* Overview Stat Cards */}
+      {/* Unified Expensify-Style Executive Header */}
       <StatsCards
         reconciliation={activeRecon}
         accuracyGain={benchmark?.improvements?.field_accuracy_gain_pts || 16.8}
+        supplierRisk={supplierRisk}
+        onSeedDemo={handleSeedDemo}
+        isSeeding={isSeeding}
       />
 
-      {supplierRisk && (
-        <div className="glass-panel supplier-risk-strip">
-          <div>
-            <span className="section-kicker">SUPPLIER RISK</span>
-            <strong>{supplierRisk.supplier_name || supplierRisk.supplier_key.replace(/_/g, ' ')}</strong>
-            <span className={`badge risk-${supplierRisk.risk_level}`}>{supplierRisk.risk_level.toUpperCase()} OVERBILLING RISK</span>
-          </div>
-          <div className="supplier-risk-metrics">
-            <span>{Math.round(supplierRisk.overbilling_probability * 100)}% overbilling probability</span>
-            <span>{Math.round(supplierRisk.dispute_win_probability * 100)}% dispute win probability</span>
-            <small>Automated risk assessment across {supplierRisk.sample_count} supplier invoices</small>
-          </div>
+      {/* Master Audit Ledger Container with Combined Tabs */}
+      <div className="audit-ledger-container">
+        {/* Top Attached Segmented Navigation Tabs */}
+        <div className="ledger-tabs-bar">
+          <nav className="ledger-tabs-nav">
+            <button
+              className={`ledger-tab-btn ${activeTab === 'exceptions' ? 'active' : ''}`}
+              onClick={() => setActiveTab('exceptions')}
+            >
+              <AlertTriangle size={15} />
+              <span>Exceptions Inbox</span>
+              <span className={`tab-count-badge ${activeRecon?.findings?.length ? 'badge-danger' : 'badge-neutral'}`}>
+                {activeRecon?.findings?.length || 0}
+              </span>
+            </button>
+
+            <button
+              className={`ledger-tab-btn ${activeTab === 'matching' ? 'active' : ''}`}
+              onClick={() => setActiveTab('matching')}
+            >
+              <Layers size={15} />
+              <span>Line Reconciliation</span>
+              <span className="tab-count-badge badge-neutral">
+                {activeRecon?.matches?.length || 0}
+              </span>
+            </button>
+
+            <button
+              className={`ledger-tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+              onClick={() => setActiveTab('history')}
+            >
+              <History size={15} />
+              <span>Vendor Price Directory</span>
+              <span className="tab-count-badge badge-neutral">
+                {priceHistory.length}
+              </span>
+            </button>
+
+            <button
+              className={`ledger-tab-btn ${activeTab === 'benchmark' ? 'active' : ''}`}
+              onClick={() => setActiveTab('benchmark')}
+            >
+              <Cpu size={15} />
+              <span className="tab-label-full">AI Audit Intelligence</span>
+              <span className="tab-label-short">AI Engine</span>
+            </button>
+          </nav>
         </div>
-      )}
 
-      {/* Navigation Tabs */}
-      <div className="tabs-nav">
-        <button
-          className={`tab-btn ${activeTab === 'exceptions' ? 'active' : ''}`}
-          onClick={() => setActiveTab('exceptions')}
-        >
-          <AlertTriangle size={16} />
-          <span>Financial Exceptions ({activeRecon?.findings?.length || 0})</span>
-        </button>
+        {/* Ledger Content Pane */}
+        <div className="ledger-content-shell">
+          {!activeRecon && activeTab === 'exceptions' ? (
+            <div style={{ padding: '3rem 1rem', textAlign: 'center' }}>
+              <Sparkles size={36} color="#03d47c" style={{ margin: '0 auto 1rem' }} />
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc' }}>
+                No Active Audit Selected
+              </h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.4rem', maxWidth: '480px', margin: '0.4rem auto 1.5rem' }}>
+                Load our live Shenzhen Apex scenario to test autonomous exception detection, or upload your purchase orders and supplier invoices.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                <button className="btn btn-primary" onClick={handleSeedDemo} disabled={isSeeding}>
+                  {isSeeding ? <RefreshCw size={14} className="spin" /> : <Sparkles size={14} />}
+                  <span>{isSeeding ? 'Seeding...' : 'Load Live Demo Scenario'}</span>
+                </button>
+                <button className="btn btn-secondary" onClick={() => setIsUploadOpen(true)}>
+                  <Upload size={14} />
+                  <span>Upload Invoices</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {activeTab === 'exceptions' && (
+                <DiscrepancyView
+                  findings={activeRecon?.findings || []}
+                  workspaceId={workspace.id}
+                  onUpdateStatus={handleUpdateFindingStatus}
+                />
+              )}
 
-        <button
-          className={`tab-btn ${activeTab === 'matching' ? 'active' : ''}`}
-          onClick={() => setActiveTab('matching')}
-        >
-          <Layers size={16} />
-          <span>Line Reconciliation ({activeRecon?.matches?.length || 0})</span>
-        </button>
+              {activeTab === 'matching' && (
+                <ReconciliationTableView
+                  matches={activeRecon?.matches || []}
+                  onCorrectMatch={handleCorrectMatch}
+                />
+              )}
 
-        <button
-          className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveTab('history')}
-        >
-          <History size={16} />
-          <span>Supplier Price Memory ({priceHistory.length})</span>
-        </button>
+              {activeTab === 'history' && (
+                <PriceHistoryView historyItems={priceHistory} />
+              )}
 
-        <button
-          className={`tab-btn ${activeTab === 'benchmark' ? 'active' : ''}`}
-          onClick={() => setActiveTab('benchmark')}
-        >
-          <Cpu size={16} />
-          <span className="tab-label-full">AI Audit Intelligence</span>
-          <span className="tab-label-short">AI Intelligence</span>
-        </button>
+              {activeTab === 'benchmark' && (
+                <TinkerBenchmarkView benchmark={benchmark} />
+              )}
+            </>
+          )}
+        </div>
       </div>
-
-      {/* Tab Panels */}
-      {activeTab === 'exceptions' && (
-        <DiscrepancyView
-          findings={activeRecon?.findings || []}
-          workspaceId={workspace.id}
-          onUpdateStatus={handleUpdateFindingStatus}
-        />
-      )}
-
-      {activeTab === 'matching' && (
-        <ReconciliationTableView
-          matches={activeRecon?.matches || []}
-          onCorrectMatch={handleCorrectMatch}
-        />
-      )}
-
-      {activeTab === 'history' && (
-        <PriceHistoryView historyItems={priceHistory} />
-      )}
-
-      {activeTab === 'benchmark' && (
-        <TinkerBenchmarkView benchmark={benchmark} />
-      )}
 
       {/* Upload Modal */}
       <UploadModal
@@ -223,7 +232,7 @@ export function App() {
         }}
       />
 
-      {/* Toast */}
+      {/* Toast Notification */}
       {toastMessage && (
         <div className="toast">
           {toastMessage}

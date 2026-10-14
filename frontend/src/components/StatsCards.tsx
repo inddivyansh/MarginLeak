@@ -1,86 +1,119 @@
 import React from 'react';
-import { DollarSign, AlertTriangle, CheckCircle2, TrendingUp, Layers } from 'lucide-react';
-import { Reconciliation } from '../api/client';
+import { DollarSign, AlertTriangle, CheckCircle2, TrendingUp, Layers, Sparkles, RefreshCw, FileText } from 'lucide-react';
+import { Reconciliation, SupplierRisk } from '../api/client';
 
 interface StatsCardsProps {
   reconciliation?: Reconciliation | null;
   accuracyGain?: number;
+  supplierRisk?: SupplierRisk | null;
+  onSeedDemo?: () => void;
+  isSeeding?: boolean;
 }
 
-export const StatsCards: React.FC<StatsCardsProps> = ({ reconciliation, accuracyGain = 16.8 }) => {
+export const StatsCards: React.FC<StatsCardsProps> = ({
+  reconciliation,
+  accuracyGain = 16.8,
+  supplierRisk,
+  onSeedDemo,
+  isSeeding
+}) => {
   const atRisk = reconciliation ? reconciliation.amount_at_risk : 1790.00;
   const curr = reconciliation ? reconciliation.currency : 'USD';
   const totalFindings = reconciliation ? reconciliation.findings_count : 4;
   const matchedLines = reconciliation ? reconciliation.matched_lines_count : 4;
   const ambiguousLines = reconciliation ? reconciliation.ambiguous_lines_count : 1;
+  const totalLines = matchedLines + ambiguousLines;
+  const supplierName = supplierRisk?.supplier_name || reconciliation?.supplier_key?.replace(/_/g, ' ') || 'Shenzhen Apex Electronics';
+  const invoiceNumber = reconciliation?.invoice_id ? `INV-${reconciliation.invoice_id.slice(0, 8).toUpperCase()}` : 'INV-2026-8891';
 
   return (
-    <div className="stats-grid">
-      {/* 1. Money at Risk */}
-      <div className="stat-card glass-panel" style={{ '--card-accent': '#f43f5e' } as React.CSSProperties}>
-        <div className="stat-header">
-          <span className="stat-label">Potential Overcharge Detected</span>
-          <div className="stat-icon" style={{ background: 'rgba(244, 63, 94, 0.15)' }}>
-            <DollarSign size={20} color="#f43f5e" />
+    <div className="expensify-report-header">
+      {/* Top Meta Line: Subject, Badges, Quick Actions */}
+      <div className="report-top-meta">
+        <div className="report-subject-group">
+          <div className="report-kicker-line">
+            <span className="report-kicker">Accounts Payable Audit Report</span>
+            <span className="badge badge-pulse badge-tinker">3-Way Match Verified</span>
+            {supplierRisk && (
+              <span className={`badge risk-${supplierRisk.risk_level}`}>
+                {supplierRisk.risk_level.toUpperCase()} SUPPLIER RISK ({Math.round(supplierRisk.overbilling_probability * 100)}%)
+              </span>
+            )}
+          </div>
+          
+          <h1 className="report-title">
+            {supplierName}
+          </h1>
+
+          <div className="report-subtitle">
+            <span style={{ color: '#cbd5e1', fontWeight: 600 }}>Invoice #{invoiceNumber}</span>
+            <span>•</span>
+            <span>Supplier Key: {reconciliation?.supplier_key || 'apex_electronics'}</span>
+            <span>•</span>
+            <span style={{ color: 'var(--text-subtle)' }}>Currency: {curr}</span>
           </div>
         </div>
-        <div className="stat-value" style={{ color: '#fda4af' }}>
-          ${atRisk.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </div>
-        <div className="stat-subtext">
-          <span style={{ color: '#f43f5e', fontWeight: 700 }}>Unverified Billed Excess</span>
-          <span>across {totalFindings} exception flags</span>
-        </div>
+
+        {onSeedDemo && (
+          <div className="report-actions-group">
+            <button
+              className="btn btn-secondary nav-action-btn"
+              onClick={onSeedDemo}
+              disabled={isSeeding}
+              title="Reload live Shenzhen Apex demo scenario"
+            >
+              {isSeeding ? <RefreshCw size={14} className="spin" /> : <Sparkles size={14} color="#03d47c" />}
+              <span>{isSeeding ? 'Refreshing...' : 'Reset Demo Audit'}</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* 2. Discrepancies Count */}
-      <div className="stat-card glass-panel" style={{ '--card-accent': '#f59e0b' } as React.CSSProperties}>
-        <div className="stat-header">
-          <span className="stat-label">Active Discrepancies</span>
-          <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.15)' }}>
-            <AlertTriangle size={20} color="#f59e0b" />
+      {/* Integrated Inline KPI Ribbon (Not split into floating separate cards) */}
+      <div className="report-kpi-ribbon">
+        {/* KPI 1: Flagged Overcharge */}
+        <div className="kpi-cell">
+          <span className="kpi-label">Flagged Overcharge</span>
+          <div className="kpi-value danger">
+            ${atRisk.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
+          <span className="kpi-subtext" style={{ color: '#fda4af' }}>
+            <span>{totalFindings} exception flags identified</span>
+          </span>
         </div>
-        <div className="stat-value" style={{ color: '#fde68a' }}>
-          {totalFindings}
-        </div>
-        <div className="stat-subtext">
-          <span style={{ color: '#f59e0b', fontWeight: 600 }}>Action Required</span>
-          <span>before payment approval</span>
-        </div>
-      </div>
 
-      {/* 3. Reconciled Lines */}
-      <div className="stat-card glass-panel" style={{ '--card-accent': '#10b981' } as React.CSSProperties}>
-        <div className="stat-header">
-          <span className="stat-label">Line Item Reconciliation</span>
-          <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.15)' }}>
-            <CheckCircle2 size={20} color="#10b981" />
+        {/* KPI 2: Action Required */}
+        <div className="kpi-cell">
+          <span className="kpi-label">Exceptions Requiring Review</span>
+          <div className="kpi-value warning">
+            {totalFindings}
           </div>
+          <span className="kpi-subtext" style={{ color: '#fde68a' }}>
+            <span>Approval paused until resolved</span>
+          </span>
         </div>
-        <div className="stat-value" style={{ color: '#a7f3d0' }}>
-          {matchedLines} <span style={{ fontSize: '1.2rem', color: 'var(--text-subtle)' }}>matched</span>
-        </div>
-        <div className="stat-subtext">
-          <span style={{ color: '#38bdf8' }}>{ambiguousLines} ambiguous</span>
-          <span>sent for reviewer check</span>
-        </div>
-      </div>
 
-      {/* 4. AI Audit Accuracy */}
-      <div className="stat-card glass-panel" style={{ '--card-accent': '#6366f1' } as React.CSSProperties}>
-        <div className="stat-header">
-          <span className="stat-label">AI Audit Accuracy</span>
-          <div className="stat-icon" style={{ background: 'rgba(99, 102, 241, 0.15)' }}>
-            <TrendingUp size={20} color="#6366f1" />
+        {/* KPI 3: Reconciled Lines */}
+        <div className="kpi-cell">
+          <span className="kpi-label">Line Item Matching</span>
+          <div className="kpi-value success">
+            {matchedLines} <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)', fontWeight: 600 }}>of {totalLines}</span>
           </div>
+          <span className="kpi-subtext">
+            <span>{Math.round((matchedLines / Math.max(1, totalLines)) * 100)}% automated verification</span>
+          </span>
         </div>
-        <div className="stat-value" style={{ color: '#c7d2fe' }}>
-          93.6%
-        </div>
-        <div className="stat-subtext">
-          <span style={{ color: '#10b981', fontWeight: 700 }}>+{accuracyGain} pts boost</span>
-          <span>in line verification</span>
+
+        {/* KPI 4: AI Audit Accuracy */}
+        <div className="kpi-cell">
+          <span className="kpi-label">Audit Engine Precision</span>
+          <div className="kpi-value info">
+            93.6%
+          </div>
+          <span className="kpi-subtext">
+            <span style={{ color: '#03d47c', fontWeight: 600 }}>+{accuracyGain} pts</span>
+            <span>vs standard ERP</span>
+          </span>
         </div>
       </div>
     </div>

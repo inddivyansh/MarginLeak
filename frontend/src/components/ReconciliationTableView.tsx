@@ -8,16 +8,14 @@ interface ReconciliationTableViewProps {
 }
 
 export const ReconciliationTableView: React.FC<ReconciliationTableViewProps> = ({ matches, onCorrectMatch }) => {
-  const [selectedMatch, setSelectedMatch] = useState<LineMatch | null>(null);
-
   const getMethodBadge = (method: string) => {
     switch (method) {
       case 'exact_sku':
-        return <span className="badge badge-success">Exact SKU Match</span>;
+        return <span className="badge badge-success">Exact SKU</span>;
       case 'supplier_alias':
         return <span className="badge badge-info">Supplier Alias</span>;
       case 'model_normalization':
-        return <span className="badge badge-tinker">AI Semantic Match</span>;
+        return <span className="badge badge-tinker">AI Normalization</span>;
       case 'fuzzy_token':
         return <span className="badge badge-warning">Fuzzy Match</span>;
       default:
@@ -26,12 +24,19 @@ export const ReconciliationTableView: React.FC<ReconciliationTableViewProps> = (
   };
 
   return (
-    <div className="glass-panel" style={{ padding: '1.5rem' }}>
-      <div style={{ marginBottom: '1.25rem' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Line-by-Line Accounts Payable Reconciliation</h3>
-        <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>
-          Detailed mapping comparing raw invoice lines against authorized purchase order lines.
-        </p>
+    <div>
+      <div style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc' }}>
+            3-Way Line Matching Ledger
+          </h3>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+            Direct comparison of invoiced lines against approved purchase order allocations.
+          </p>
+        </div>
+        <div className="badge badge-info">
+          {matches.length} Line Items
+        </div>
       </div>
 
       <div className="mobile-scroll-hint">
@@ -43,11 +48,11 @@ export const ReconciliationTableView: React.FC<ReconciliationTableViewProps> = (
           <thead>
             <tr>
               <th className="col-line">Line</th>
-              <th className="col-invoice">Billed Invoice Line</th>
+              <th className="col-invoice">Billed Line Item</th>
               <th className="col-po">Matched Purchase Order Line</th>
-              <th className="col-method">Method & Confidence</th>
+              <th className="col-method">Match Method</th>
               <th className="col-variance">Variance</th>
-              <th className="col-review">Review</th>
+              <th className="col-review">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -66,9 +71,9 @@ export const ReconciliationTableView: React.FC<ReconciliationTableViewProps> = (
 
                   {/* Invoice Line */}
                   <td>
-                    <div style={{ fontWeight: 600, color: '#f8fafc' }}>{inv?.description || 'Unknown'}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
-                      SKU: {inv?.sku || 'None'} | {inv?.quantity} {inv?.unit} @ ${inv?.unit_price?.toFixed(2)} = ${inv?.total_price?.toFixed(2)}
+                    <div style={{ fontWeight: 600, color: '#f8fafc' }}>{inv?.description || 'Unknown Item'}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: '0.15rem' }}>
+                      SKU: {inv?.sku || 'None'} • {inv?.quantity} {inv?.unit} @ ${inv?.unit_price?.toFixed(2)} = ${inv?.total_price?.toFixed(2)}
                     </div>
                   </td>
 
@@ -77,12 +82,12 @@ export const ReconciliationTableView: React.FC<ReconciliationTableViewProps> = (
                     {po ? (
                       <>
                         <div style={{ fontWeight: 600, color: '#cbd5e1' }}>{po.description}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
-                          SKU: {po.sku || 'None'} | Auth: {po.quantity} {po.unit} @ ${po.unit_price?.toFixed(2)}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: '0.15rem' }}>
+                          Auth: {po.quantity} {po.unit} @ ${po.unit_price?.toFixed(2)} (PO SKU: {po.sku || 'None'})
                         </div>
                       </>
                     ) : (
-                      <span style={{ color: 'var(--danger)', fontSize: '0.85rem', fontWeight: 600 }}>
+                      <span style={{ color: 'var(--danger)', fontSize: '0.825rem', fontWeight: 600 }}>
                         No Matched PO Line
                       </span>
                     )}
@@ -92,18 +97,18 @@ export const ReconciliationTableView: React.FC<ReconciliationTableViewProps> = (
                   <td>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                       {getMethodBadge(m.method)}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                         <div style={{
                           flex: 1,
-                          height: '4px',
-                          background: 'rgba(255,255,255,0.1)',
+                          height: '3px',
+                          background: 'rgba(255,255,255,0.08)',
                           borderRadius: '2px',
                           overflow: 'hidden'
                         }}>
                           <div style={{
                             width: `${Math.round(m.confidence * 100)}%`,
                             height: '100%',
-                            background: m.confidence > 0.8 ? '#10b981' : (m.confidence > 0.6 ? '#f59e0b' : '#f43f5e')
+                            background: m.confidence > 0.8 ? '#03d47c' : (m.confidence > 0.6 ? '#f59e0b' : '#f43f5e')
                           }} />
                         </div>
                         <span style={{ fontSize: '0.7rem', color: 'var(--text-subtle)' }}>
@@ -116,21 +121,21 @@ export const ReconciliationTableView: React.FC<ReconciliationTableViewProps> = (
                   {/* Variance */}
                   <td>
                     {hasDiff ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                         {priceDiff > 0.01 && (
-                          <span style={{ color: 'var(--danger)', fontSize: '0.8rem', fontWeight: 700 }}>
+                          <span style={{ color: '#fda4af', fontSize: '0.8rem', fontWeight: 700 }}>
                             +${priceDiff.toFixed(2)}/unit
                           </span>
                         )}
                         {qtyDiff > 0.01 && (
-                          <span style={{ color: 'var(--warning)', fontSize: '0.8rem', fontWeight: 700 }}>
+                          <span style={{ color: '#fde68a', fontSize: '0.8rem', fontWeight: 700 }}>
                             +{qtyDiff} units
                           </span>
                         )}
                       </div>
                     ) : (
-                      <span style={{ color: 'var(--success)', fontSize: '0.8rem', fontWeight: 600 }}>
-                        Exact
+                      <span style={{ color: '#03d47c', fontSize: '0.8rem', fontWeight: 600 }}>
+                        Matched
                       </span>
                     )}
                   </td>
