@@ -25,7 +25,14 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     if (!response.ok) {
       setAccessToken(null);
       await supabase.auth.signOut();
-      throw new Error('The backend rejected this session. Verify SUPABASE_JWT_SECRET in Render and redeploy.');
+      let errorDetail = 'The backend rejected this session. Verify Supabase credentials and redeploy.';
+      try {
+        const errorData = await response.json();
+        if (errorData.detail) errorDetail = errorData.detail;
+      } catch {
+        // use fallback message
+      }
+      throw new Error(errorDetail);
     }
     setUser(session.user);
   };
