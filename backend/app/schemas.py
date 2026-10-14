@@ -232,6 +232,9 @@ class SupplierRiskResponse(BaseModel):
     supplier_name: Optional[str] = None
     risk_level: str
     overbilling_probability: float
+    heuristic_risk_score: Optional[float] = None
+    risk_score_type: Optional[str] = "heuristic_risk_score"
+    is_calibrated_probability: Optional[bool] = False
     dispute_win_probability: float
     model_provider: str
     sample_count: int

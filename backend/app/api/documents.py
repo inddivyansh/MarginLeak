@@ -34,15 +34,15 @@ async def upload_invoice(
     # Get or create workspace
     ws = get_authorized_workspace(workspace_id, user, db) if workspace_id else get_user_workspace(user, db)
 
-    # Save physical file
-    file_path = os.path.join(settings.upload_dir, str(uuid.uuid4()))
-    with open(file_path, "wb") as f:
-        f.write(content)
-
-    # Parse with PyMuPDF
+    # Parse with PyMuPDF first before saving to disk
     parsed = PDFInvoiceParser.parse_pdf(content, file.filename)
     if parsed["parse_status"] == "failed":
         raise HTTPException(status_code=422, detail=parsed["warnings"][0])
+
+    # Save physical file with scoped unique path
+    file_path = os.path.join(settings.upload_dir, f"inv_{ws.id}_{uuid.uuid4()}.pdf")
+    with open(file_path, "wb") as f:
+        f.write(content)
 
     supplier_key = (parsed["supplier_name"] or "unknown").strip().lower().replace(" ", "_")
 
@@ -166,11 +166,21 @@ async def confirm_purchase_order(
     supplier_name = req.supplier_name or "Standard Supplier"
     supplier_key = supplier_name.strip().lower().replace(" ", "_")
 
+    # Move temporary PO file to permanent scoped storage and clean up temp file
+    perm_filename = f"po_{ws.id}_{uuid.uuid4()}_{os.path.basename(req.filename)}"
+    perm_path = os.path.join(settings.upload_dir, perm_filename)
+    with open(perm_path, "wb") as f:
+        f.write(content)
+    try:
+        os.remove(temp_path)
+    except OSError:
+        pass
+
     doc = Document(
         workspace_id=ws.id,
         type="purchase_order",
         filename=req.filename,
-        file_path=temp_path,
+        file_path=perm_path,
         sha256=sha256,
         supplier_name=supplier_name,
         supplier_key=supplier_key,

@@ -24,26 +24,39 @@ def _heuristic_prediction(features: Dict[str, Decimal]) -> Dict[str, Any]:
     )
     return {
         "overbilling_probability": float(risk_score),
+        "heuristic_risk_score": float(risk_score),
+        "risk_score_type": "heuristic_risk_score",
+        "is_calibrated_probability": False,
         "dispute_win_probability": float(features["dispute_win_rate"]),
         "model_provider": "deterministic_fallback",
     }
 
 
 def _tabpfn_prediction(rows: List[Dict[str, Decimal]], labels: List[int]) -> Optional[Dict[str, Any]]:
-    if not settings.tabpfn_enabled or len(rows) < 4 or len(set(labels)) < 2:
+    # Requires at least 4 past training invoices plus 1 held-out test invoice, and at least 2 distinct classes in training split
+    if not settings.tabpfn_enabled or len(rows) < 5:
+        return None
+    train_rows = rows[:-1]
+    train_labels = labels[:-1]
+    if len(set(train_labels)) < 2:
         return None
     try:
         from tabpfn import TabPFNClassifier
         import numpy as np
 
         feature_names = ["order_volume", "price_variance", "finding_rate", "average_lead_time"]
-        matrix = np.array([[float(row[name]) for name in feature_names] for row in rows])
+        train_matrix = np.array([[float(row[name]) for name in feature_names] for row in train_rows])
+        test_matrix = np.array([[float(rows[-1][name]) for name in feature_names]])
         classifier = TabPFNClassifier()
-        classifier.fit(matrix, np.array(labels))
-        probabilities = classifier.predict_proba(matrix[-1:])[0]
+        classifier.fit(train_matrix, np.array(train_labels))
+        probabilities = classifier.predict_proba(test_matrix)[0]
         classes = list(classifier.classes_)
+        prob = float(probabilities[classes.index(1)]) if 1 in classes else 0.0
         return {
-            "overbilling_probability": float(probabilities[classes.index(1)]),
+            "overbilling_probability": prob,
+            "heuristic_risk_score": prob,
+            "risk_score_type": "time_separated_tabpfn",
+            "is_calibrated_probability": True,
             "dispute_win_probability": None,
             "model_provider": "tabpfn",
         }
@@ -61,10 +74,17 @@ def predict_supplier_risk(db: Session, workspace_id: Optional[str] = None, suppl
 
     if not invoices:
         return {
-            "supplier_key": supplier_key or "unknown", "supplier_name": None,
-            "risk_level": "low", "overbilling_probability": 0.0,
-            "dispute_win_probability": 0.0, "model_provider": "insufficient_history",
-            "sample_count": 0, "features": {},
+            "supplier_key": supplier_key or "unknown",
+            "supplier_name": None,
+            "risk_level": "low",
+            "overbilling_probability": 0.0,
+            "heuristic_risk_score": 0.0,
+            "risk_score_type": "heuristic_risk_score",
+            "is_calibrated_probability": False,
+            "dispute_win_probability": 0.0,
+            "model_provider": "insufficient_history",
+            "sample_count": 0,
+            "features": {},
         }
 
     invoice_ids = [invoice.id for invoice in invoices]
@@ -121,13 +141,18 @@ def predict_supplier_risk(db: Session, workspace_id: Optional[str] = None, suppl
     prediction = _tabpfn_prediction(feature_rows, labels) or _heuristic_prediction(features)
     if prediction["dispute_win_probability"] is None:
         prediction["dispute_win_probability"] = float(dispute_win_rate)
-    probability = Decimal(str(prediction["overbilling_probability"]))
+    probability = Decimal(str(prediction.get("heuristic_risk_score", prediction["overbilling_probability"])))
     risk_level = "high" if probability >= Decimal("0.67") else ("medium" if probability >= Decimal("0.34") else "low")
     return {
         "supplier_key": supplier_key or invoices[-1].supplier_key or "unknown",
-        "supplier_name": invoices[-1].supplier_name, "risk_level": risk_level,
+        "supplier_name": invoices[-1].supplier_name,
+        "risk_level": risk_level,
         "overbilling_probability": float(probability),
+        "heuristic_risk_score": float(probability),
+        "risk_score_type": prediction.get("risk_score_type", "heuristic_risk_score"),
+        "is_calibrated_probability": prediction.get("is_calibrated_probability", False),
         "dispute_win_probability": prediction["dispute_win_probability"],
-        "model_provider": prediction["model_provider"], "sample_count": len(invoices),
+        "model_provider": prediction["model_provider"],
+        "sample_count": len(invoices),
         "features": {key: float(value) for key, value in features.items()},
     }

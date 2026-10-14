@@ -223,3 +223,36 @@ def test_seed_sample_scenario_creates_full_audit(db_session):
     assert len(recon.findings) == 4
     assert len(recon.matches) == 4
 
+
+def test_export_csv_report_success(seeded_records):
+    db, workspace_a, _, reconciliation, finding, _, user = seeded_records
+    response = export_csv_report(reconciliation.id, workspace_a.id, db, user)
+
+    assert response.media_type == "text/csv"
+    assert "attachment; filename=MarginLeak_Exception_Report_" in response.headers["Content-Disposition"]
+    csv_text = response.body.decode("utf-8")
+    assert "Finding ID,Status,Type,Severity,Currency,Amount at Risk" in csv_text
+    assert finding.id in csv_text
+
+
+def test_two_account_cross_workspace_access_rejected(db_session):
+    user_1 = models.User(id="user-1", external_id="ext-1", email="user1@example.com")
+    workspace_1 = models.Workspace(id="ws-1", name="WS 1", default_currency="USD")
+    mem_1 = models.WorkspaceMembership(user_id=user_1.id, workspace_id=workspace_1.id, role="owner")
+    inv_1 = models.Invoice(id="inv-1", workspace_id=workspace_1.id, invoice_number="INV-1", total_amount=100)
+
+    user_2 = models.User(id="user-2", external_id="ext-2", email="user2@example.com")
+    workspace_2 = models.Workspace(id="ws-2", name="WS 2", default_currency="USD")
+    mem_2 = models.WorkspaceMembership(user_id=user_2.id, workspace_id=workspace_2.id, role="owner")
+
+    recon_1 = models.Reconciliation(id="recon-1", workspace_id=workspace_1.id, invoice_id=inv_1.id, status="completed")
+    db_session.add_all([user_1, workspace_1, mem_1, inv_1, user_2, workspace_2, mem_2, recon_1])
+    db_session.commit()
+
+    # User 1 has access to ws-1 and recon-1
+    res = get_reconciliation(recon_1.id, workspace_1.id, db_session, user_1)
+    assert res.id == "recon-1"
+
+    # User 2 attempting to access User 1's workspace or recon must be rejected with 404
+    assert_not_found(get_reconciliation, recon_1.id, workspace_1.id, db_session, user_2)
+    assert_not_found(export_csv_report, recon_1.id, workspace_1.id, db_session, user_2)

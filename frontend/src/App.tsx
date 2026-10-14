@@ -96,9 +96,14 @@ export function App() {
     }
   };
 
-  const handleExportCsv = () => {
+  const handleExportCsv = async () => {
     if (!activeRecon) return;
-    window.location.href = api.getReportDownloadUrl(activeRecon.id, workspace.id);
+    try {
+      await api.downloadReport(activeRecon.id, workspace.id);
+      showToast('📥 CSV exception report downloaded successfully!');
+    } catch (e: any) {
+      showToast(`Export failed: ${e.message}`);
+    }
   };
 
   return (

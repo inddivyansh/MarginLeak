@@ -43,10 +43,13 @@ def measured_metrics(name: str, predictions: List[Optional[Dict[str, Any]]], tes
         if target.get("pack_quantity") == 200 and prediction.get("pack_quantity") != 200:
             false_merges += 1
     latencies = sorted(latencies)
+    field_acc = round(correct / total * 100, 2) if total else 0.0
     metrics = {
         "name": name,
         "status": "measured",
-        "exact_structured_field_acc": round(correct / total * 100, 2) if total else 0.0,
+        "metric_description": "structured-field accuracy with fuzzy description matching (>80 token_set_ratio for canonical_description; exact match for pack_quantity, pack_unit, size)",
+        "structured_field_accuracy_fuzzy_desc": field_acc,
+        "exact_structured_field_acc": field_acc,
         "json_validity_rate": round(len(valid_predictions) / len(test_data) * 100, 2) if test_data else 0.0,
         "false_merge_rate": round(false_merges / len(test_data) * 100, 2) if test_data else 0.0,
         "p50_latency_ms": round(latencies[len(latencies) // 2], 2) if latencies else None,

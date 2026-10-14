@@ -216,7 +216,8 @@ def seed_sample_scenario(db: Session = Depends(get_db), user: User = Depends(get
             "historical_price_check": True,
             "price_tolerance_percent": 2.0,
             "historical_alert_percent": 5.0,
-            "use_model_normalization": True
+            "use_model_normalization": True,
+            "quantity_check_confirmed": True
         }
     }
     from backend.app.api.reconciliations import create_reconciliation

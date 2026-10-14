@@ -130,6 +130,9 @@ export interface SupplierRisk {
   supplier_name?: string;
   risk_level: 'low' | 'medium' | 'high';
   overbilling_probability: number;
+  heuristic_risk_score?: number;
+  risk_score_type?: string;
+  is_calibrated_probability?: boolean;
   dispute_win_probability: number;
   model_provider: string;
   sample_count: number;
@@ -264,6 +267,37 @@ export const api = {
 
   getReportDownloadUrl(reconciliationId: string, workspaceId: string): string {
     return `${API_BASE}/reports/${reconciliationId}.csv?workspace_id=${encodeURIComponent(workspaceId)}`;
+  },
+
+  async downloadReport(reconciliationId: string, workspaceId: string): Promise<void> {
+    const url = this.getReportDownloadUrl(reconciliationId, workspaceId);
+    const res = await apiFetch(url);
+    if (!res.ok) {
+      if (res.status === 401) {
+        throw new Error('Unauthorized (401): Authentication required to export reports.');
+      }
+      if (res.status === 404) {
+        throw new Error('Not Found (404): Reconciliation report could not be found.');
+      }
+      let detail = `Failed to download report (${res.status} ${res.statusText})`;
+      try {
+        const err = await res.json();
+        detail = err.detail || err.message || detail;
+      } catch {
+        const text = await res.text().catch(() => '');
+        if (text) detail = text.slice(0, 200).trim();
+      }
+      throw new Error(detail);
+    }
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = `MarginLeak_Exception_Report_${reconciliationId.slice(0, 8)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(blobUrl);
   }
 };
 

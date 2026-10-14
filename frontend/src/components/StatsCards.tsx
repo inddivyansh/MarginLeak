@@ -36,7 +36,7 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
             <span className="badge badge-pulse badge-tinker">3-Way Match Verified</span>
             {supplierRisk && (
               <span className={`badge risk-${supplierRisk.risk_level}`}>
-                {supplierRisk.risk_level.toUpperCase()} SUPPLIER RISK ({Math.round(supplierRisk.overbilling_probability * 100)}%)
+                {supplierRisk.risk_level.toUpperCase()} RISK SCORE ({Math.round((supplierRisk.heuristic_risk_score ?? supplierRisk.overbilling_probability) * 100)}%)
               </span>
             )}
           </div>

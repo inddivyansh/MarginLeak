@@ -6,6 +6,8 @@
     "baseline_a_deterministic": {
       "name": "Baseline A (Deterministic Normalization)",
       "status": "measured",
+      "metric_description": "structured-field accuracy with fuzzy description matching (>80 token_set_ratio for canonical_description; exact match for pack_quantity, pack_unit, size)",
+      "structured_field_accuracy_fuzzy_desc": 62.66,
       "exact_structured_field_acc": 62.66,
       "json_validity_rate": 100.0,
       "false_merge_rate": 3.8,

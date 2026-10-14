@@ -327,19 +327,24 @@ def export_csv_report(reconciliation_id: str, workspace_id: str, db: Session = D
     # Header
     writer.writerow([
         "Finding ID", "Status", "Type", "Severity", "Currency",
-        "Amount at Risk", "Explanation", "Invoice Line", "PO Line",
+        "Amount at Risk", "Exposure Role", "Exposure Key", "Explanation", "Invoice Line", "PO Line",
         "Calculation Formula", "Source Snippet", "Page"
     ])
 
     for f in findings:
         ev = f.evidence_json or {}
+        amount = float(f.amount_at_risk or 0)
+        is_primary = ev.get("is_primary_exposure", amount > 0)
+        role = "Primary Exposure" if is_primary and amount > 0 else "Supporting Context / Review Indicator"
         writer.writerow([
             f.id,
             f.status,
             f.type,
             f.severity,
             f.currency,
-            f"{f.amount_at_risk:.2f}",
+            f"{amount:.2f}",
+            role,
+            ev.get("exposure_key", "N/A"),
             f.explanation,
             ev.get("invoice_desc") or ev.get("invoice_line_num", "N/A"),
             ev.get("po_desc") or ev.get("po_line_num", "N/A"),
@@ -352,5 +357,8 @@ def export_csv_report(reconciliation_id: str, workspace_id: str, db: Session = D
     return Response(
         content=csv_data,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=MarginLeak_Exception_Report_{recon.id[:8]}.csv"}
+        headers={
+            "Content-Disposition": f"attachment; filename=MarginLeak_Exception_Report_{recon.id[:8]}.csv",
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+        }
     )

@@ -4,14 +4,39 @@ from typing import Dict, Any, List, Optional
 from backend.app.engine.matcher import LineMatcher
 
 def to_dec(val: Any) -> Decimal:
+    """
+    Safely converts input to a finite, quantized Decimal.
+    Rejects None, non-finite values (NaN, Infinity), and malformed strings.
+    """
     if val is None:
         return Decimal("0.00")
     if isinstance(val, Decimal):
-        return val
+        if not val.is_finite():
+            raise ValueError(f"Non-finite numeric value: {val!r}")
+        return val.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     try:
-        return Decimal(str(val)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        dec = Decimal(str(val))
     except (ArithmeticError, ValueError, TypeError) as exc:
         raise ValueError(f"Invalid numeric value: {val!r}") from exc
+
+    if not dec.is_finite():
+        raise ValueError(f"Non-finite numeric value: {val!r}")
+    try:
+        return dec.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except ArithmeticError as exc:
+        raise ValueError(f"Invalid numeric value: {val!r}") from exc
+
+def get_line_total(line: Dict[str, Any]) -> Decimal:
+    """
+    Returns the line total price. If missing, None, or zero,
+    derives total from quantity * unit_price.
+    """
+    total = to_dec(line.get("total_price"))
+    if total == Decimal("0.00"):
+        qty = to_dec(line.get("quantity"))
+        unit_p = to_dec(line.get("unit_price"))
+        total = (qty * unit_p).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return total
 
 class ReconciliationEngine:
     @staticmethod
@@ -35,10 +60,44 @@ class ReconciliationEngine:
         check_history = opts.get("historical_price_check", True)
         use_model = opts.get("use_model_normalization", True)
         quantity_check_confirmed = opts.get("quantity_check_confirmed", False)
+        po_currency = opts.get("po_currency")
 
         findings = []
         matches = []
         total_amount_at_risk = Decimal("0.00")
+        unconfirmed_amount_at_risk = Decimal("0.00")
+
+        # Currency Compatibility Verification
+        currency_incompatible = False
+        if po_lines and not po_currency:
+            for pl in po_lines:
+                if pl.get("currency"):
+                    po_currency = pl.get("currency")
+                    break
+
+        if po_currency and currency and po_currency.strip().upper() != currency.strip().upper():
+            currency_incompatible = True
+            findings.append({
+                "id": str(uuid.uuid4()),
+                "invoice_line_id": None,
+                "po_line_id": None,
+                "type": "CURRENCY_MISMATCH",
+                "severity": "critical",
+                "amount_at_risk": 0.0,
+                "currency": currency,
+                "explanation": (
+                    f"Incompatible Currency Warning: Invoiced in '{currency.upper()}' but Purchase Order "
+                    f"is in '{po_currency.upper()}'. Automated price comparisons cannot proceed without exchange rate normalization."
+                ),
+                "evidence_json": {
+                    "is_primary_exposure": False,
+                    "exposure_key": "header:currency_mismatch",
+                    "invoice_currency": currency.upper(),
+                    "po_currency": po_currency.upper(),
+                    "exchange_rate_required": True
+                },
+                "status": "open"
+            })
 
         # 1. Check for Duplicate Invoice Submission
         if existing_invoice_numbers and invoice_number and invoice_number in existing_invoice_numbers:
@@ -52,6 +111,8 @@ class ReconciliationEngine:
                 "currency": currency,
                 "explanation": f"Duplicate Invoice Warning: Invoice number '{invoice_number}' was previously uploaded and processed for supplier '{supplier_key or 'Unknown'}'.",
                 "evidence_json": {
+                    "is_primary_exposure": False,
+                    "exposure_key": "invoice:duplicate_submission",
                     "reason": "duplicate_invoice_number",
                     "duplicate_invoice_number": invoice_number,
                     "supplier_key": supplier_key
@@ -71,18 +132,21 @@ class ReconciliationEngine:
             if key in seen_lines:
                 prev_line = seen_lines[key]
                 duplicate_line_ids.add(inv.get("id"))
-                dup_amount = to_dec(inv.get("total_price") or (to_dec(inv.get("quantity")) * to_dec(inv.get("unit_price"))))
+                dup_amount = get_line_total(inv)
                 total_amount_at_risk += dup_amount
                 findings.append({
                     "id": str(uuid.uuid4()),
                     "invoice_line_id": inv.get("id"),
                     "po_line_id": None,
                     "type": "DUPLICATE_CANDIDATE",
-                    "severity": "critical",
+                    "severity": "warning",
                     "amount_at_risk": float(dup_amount),
                     "currency": currency,
-                    "explanation": f"Duplicate Line Warning: Line {inv.get('line_number')} appears identical to Line {prev_line.get('line_number')} ('{inv.get('description')}' for {inv.get('quantity')} {inv.get('unit')} @ {currency} {inv.get('unit_price')}).",
+                    "explanation": f"Potential Duplicate Line: Line {inv.get('line_number')} appears identical to Line {prev_line.get('line_number')} ('{inv.get('description')}' for {inv.get('quantity')} {inv.get('unit')} @ {currency} {inv.get('unit_price')}). Review whether this is an intentional repeat or duplicate charge.",
                     "evidence_json": {
+                        "is_primary_exposure": True,
+                        "exposure_key": f"line:{inv.get('id') or inv.get('line_number')}:duplicate",
+                        "requires_review": True,
                         "duplicate_of_line": prev_line.get("line_number"),
                         "current_line": inv.get("line_number"),
                         "description": inv.get("description"),
@@ -129,20 +193,26 @@ class ReconciliationEngine:
 
             if not po_line:
                 unmatched_count += 1
+                # Derive missing total_price from quantity * unit_price
+                unmatched_total = get_line_total(inv_line)
+
                 findings.append({
                     "id": str(uuid.uuid4()),
                     "invoice_line_id": inv_line.get("id"),
                     "po_line_id": None,
                     "type": "UNMATCHED_LINE",
                     "severity": "warning",
-                    "amount_at_risk": float(to_dec(inv_line.get("total_price"))),
+                    "amount_at_risk": float(unmatched_total),
                     "currency": currency,
                     "explanation": f"Unmatched Item: Line {inv_line.get('line_number')} ('{inv_line.get('description')}') could not be matched to any line item in Purchase Order.",
                     "evidence_json": {
+                        "is_primary_exposure": True,
+                        "exposure_key": f"line:{inv_line.get('id') or inv_line.get('line_number')}:unmatched",
                         "invoice_line_num": inv_line.get("line_number"),
                         "invoice_desc": inv_line.get("description"),
                         "invoice_qty": float(inv_line.get("quantity", 0)),
                         "invoice_unit_price": float(inv_line.get("unit_price", 0)),
+                        "line_total": float(unmatched_total),
                         "invoice_snippet": inv_line.get("source_text"),
                         "invoice_page": inv_line.get("source_page", 1)
                     },
@@ -162,6 +232,8 @@ class ReconciliationEngine:
                     "currency": currency,
                     "explanation": f"Ambiguous Product Match: '{inv_line.get('description')}' tentatively paired with PO '{po_line.get('description')}'. {match_info.get('ambiguity_reason')}",
                     "evidence_json": {
+                        "is_primary_exposure": False,
+                        "exposure_key": f"line:{inv_line.get('id') or inv_line.get('line_number')}:ambiguous",
                         "invoice_desc": inv_line.get("description"),
                         "po_desc": po_line.get("description"),
                         "match_confidence": confidence,
@@ -176,11 +248,19 @@ class ReconciliationEngine:
             if is_ambiguous:
                 continue
 
-            # Rule 1: Unit Price Difference
+            # Skip price calculations if currencies are incompatible
+            if currency_incompatible:
+                continue
+
             p_inv = to_dec(inv_line.get("unit_price"))
             p_po = to_dec(po_line.get("unit_price"))
             q_inv = to_dec(inv_line.get("quantity"))
 
+            # Track primary price variance on this line to prevent double-counting
+            line_has_price_mismatch = False
+            primary_price_excess = Decimal("0.00")
+
+            # Rule 1: Unit Price Difference against Purchase Order
             if p_po > 0:
                 price_diff_per_unit = p_inv - p_po
                 pct_diff = (price_diff_per_unit / p_po) * Decimal("100")
@@ -188,6 +268,8 @@ class ReconciliationEngine:
                 if price_diff_per_unit > 0 and pct_diff > price_tol_pct:
                     excess_amount = (price_diff_per_unit * q_inv).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                     total_amount_at_risk += excess_amount
+                    line_has_price_mismatch = True
+                    primary_price_excess = excess_amount
 
                     findings.append({
                         "id": str(uuid.uuid4()),
@@ -199,6 +281,8 @@ class ReconciliationEngine:
                         "currency": currency,
                         "explanation": f"Unit Price Increase: Invoiced at {currency} {p_inv:.2f}/unit vs authorized PO price {currency} {p_po:.2f}/unit (+{pct_diff:.1f}%). Excess cost: {currency} {excess_amount:.2f}.",
                         "evidence_json": {
+                            "is_primary_exposure": True,
+                            "exposure_key": f"line:{inv_line.get('id') or inv_line.get('line_number')}:price",
                             "invoice_line_num": inv_line.get("line_number"),
                             "invoice_desc": inv_line.get("description"),
                             "invoice_unit_price": float(p_inv),
@@ -218,13 +302,17 @@ class ReconciliationEngine:
                         "status": "open"
                     })
 
-            # Rule 2: Quantity Mismatch
-            q_po = to_dec(po_line.get("quantity"))
-            if q_inv > q_po:
-                extra_qty = q_inv - q_po
-                # Excess quantity value based on agreed PO price
+            # Rule 2: Quantity Mismatch (Supports partial shipments / remaining quantity)
+            q_po_authorized = to_dec(po_line.get("remaining_quantity") if po_line.get("remaining_quantity") is not None else po_line.get("quantity"))
+            if q_inv > q_po_authorized:
+                extra_qty = q_inv - q_po_authorized
                 extra_cost = (extra_qty * p_po).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                total_amount_at_risk += extra_cost
+
+                # Only add confirmed quantity overages to headline total_amount_at_risk
+                if quantity_check_confirmed:
+                    total_amount_at_risk += extra_cost
+                else:
+                    unconfirmed_amount_at_risk += extra_cost
 
                 findings.append({
                     "id": str(uuid.uuid4()),
@@ -235,10 +323,13 @@ class ReconciliationEngine:
                     "amount_at_risk": float(extra_cost) if quantity_check_confirmed else 0.0,
                     "currency": currency,
                     "explanation": (
-                        f"Over-Quantity Invoiced: Invoiced for {q_inv:.0f} {inv_line.get('unit')} vs authorized PO quantity {q_po:.0f} (+{extra_qty:.0f} units). "
-                        + (f"Value at risk: {currency} {extra_cost:.2f}." if quantity_check_confirmed else "Fulfillment status is unknown; review before treating the difference as leakage.")
+                        f"Over-Quantity Invoiced: Invoiced for {q_inv:.0f} {inv_line.get('unit')} vs authorized PO quantity {q_po_authorized:.0f} (+{extra_qty:.0f} units). "
+                        + (f"Value at risk: {currency} {extra_cost:.2f}." if quantity_check_confirmed else "Fulfillment status is unconfirmed; review before treating the difference as money at risk.")
                     ),
                     "evidence_json": {
+                        "is_primary_exposure": quantity_check_confirmed,
+                        "exposure_key": f"line:{inv_line.get('id') or inv_line.get('line_number')}:quantity",
+                        "unconfirmed_overage_amount": float(extra_cost) if not quantity_check_confirmed else 0.0,
                         "invoice_line_num": inv_line.get("line_number"),
                         "invoice_desc": inv_line.get("description"),
                         "invoice_qty": float(q_inv),
@@ -247,9 +338,9 @@ class ReconciliationEngine:
                         "invoice_page": inv_line.get("source_page", 1),
                         "po_line_num": po_line.get("line_number"),
                         "po_desc": po_line.get("description"),
-                        "po_qty": float(q_po),
+                        "po_qty": float(q_po_authorized),
                         "po_unit_price": float(p_po),
-                        "calculation_formula": f"({q_inv:.0f} - {q_po:.0f}) extra units × {currency} {p_po:.2f} = {currency} {extra_cost:.2f}",
+                        "calculation_formula": f"({q_inv:.0f} - {q_po_authorized:.0f}) extra units × {currency} {p_po:.2f} = {currency} {extra_cost:.2f}",
                         "extra_quantity": float(extra_qty),
                         "difference": float(extra_cost) if quantity_check_confirmed else 0.0,
                         "quantity_review_required": not quantity_check_confirmed
@@ -275,30 +366,66 @@ class ReconciliationEngine:
                         hist_diff = p_inv - p_hist_median
                         hist_pct = (hist_diff / p_hist_median) * Decimal("100")
 
-                        # If historical price rose more than historical_alert_percent and not already flagged by PO price mismatch
                         if hist_pct > hist_alert_pct:
                             hist_excess = (hist_diff * q_inv).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                            findings.append({
-                                "id": str(uuid.uuid4()),
-                                "invoice_line_id": inv_line.get("id"),
-                                "po_line_id": po_line.get("id") if po_line else None,
-                                "type": "HISTORICAL_PRICE_ANOMALY",
-                                "severity": "warning",
-                                "amount_at_risk": float(hist_excess),
-                                "currency": currency,
-                                "explanation": f"Historical Price Deviation: Current unit price {currency} {p_inv:.2f} is {hist_pct:.1f}% above historical baseline median ({currency} {p_hist_median:.2f} across {sample_count} prior orders).",
-                                "evidence_json": {
-                                    "current_price": float(p_inv),
-                                    "historical_median": float(p_hist_median),
-                                    "prior_orders_count": sample_count,
-                                    "percentage_increase": float(hist_pct),
-                                    "calculation_formula": f"({currency} {p_inv:.2f} - {currency} {p_hist_median:.2f}) / {currency} {p_hist_median:.2f} = +{hist_pct:.1f}%"
-                                },
-                                "status": "open"
-                            })
+
+                            if line_has_price_mismatch:
+                                # Primary exposure is already accounted for by PRICE_MISMATCH on this line.
+                                # Treat this finding as corroborating supporting context with 0.0 exposure to avoid double-counting.
+                                findings.append({
+                                    "id": str(uuid.uuid4()),
+                                    "invoice_line_id": inv_line.get("id"),
+                                    "po_line_id": po_line.get("id") if po_line else None,
+                                    "type": "HISTORICAL_PRICE_ANOMALY",
+                                    "severity": "info",
+                                    "amount_at_risk": 0.0,
+                                    "currency": currency,
+                                    "explanation": (
+                                        f"Historical Price Deviation (Supporting Context): Current unit price {currency} {p_inv:.2f} is "
+                                        f"{hist_pct:.1f}% above historical baseline median ({currency} {p_hist_median:.2f} across {sample_count} prior orders). "
+                                        f"Primary price variance of {currency} {primary_price_excess:.2f} is already tracked against PO Line {po_line.get('line_number')}; "
+                                        f"this historical deviation serves as corroborating context."
+                                    ),
+                                    "evidence_json": {
+                                        "is_primary_exposure": False,
+                                        "exposure_key": f"line:{inv_line.get('id') or inv_line.get('line_number')}:price",
+                                        "primary_finding_type": "PRICE_MISMATCH",
+                                        "historical_variance_amount": float(hist_excess),
+                                        "current_price": float(p_inv),
+                                        "historical_median": float(p_hist_median),
+                                        "prior_orders_count": sample_count,
+                                        "percentage_increase": float(hist_pct),
+                                        "calculation_formula": f"({currency} {p_inv:.2f} - {currency} {p_hist_median:.2f}) / {currency} {p_hist_median:.2f} = +{hist_pct:.1f}%"
+                                    },
+                                    "status": "open"
+                                })
+                            else:
+                                # No PO price mismatch exists on this line; historical anomaly is the primary price variance.
+                                total_amount_at_risk += hist_excess
+                                findings.append({
+                                    "id": str(uuid.uuid4()),
+                                    "invoice_line_id": inv_line.get("id"),
+                                    "po_line_id": po_line.get("id") if po_line else None,
+                                    "type": "HISTORICAL_PRICE_ANOMALY",
+                                    "severity": "warning",
+                                    "amount_at_risk": float(hist_excess),
+                                    "currency": currency,
+                                    "explanation": f"Historical Price Deviation: Current unit price {currency} {p_inv:.2f} is {hist_pct:.1f}% above historical baseline median ({currency} {p_hist_median:.2f} across {sample_count} prior orders). Excess cost: {currency} {hist_excess:.2f}.",
+                                    "evidence_json": {
+                                        "is_primary_exposure": True,
+                                        "exposure_key": f"line:{inv_line.get('id') or inv_line.get('line_number')}:price",
+                                        "current_price": float(p_inv),
+                                        "historical_median": float(p_hist_median),
+                                        "prior_orders_count": sample_count,
+                                        "percentage_increase": float(hist_pct),
+                                        "calculation_formula": f"({currency} {p_inv:.2f} - {currency} {p_hist_median:.2f}) / {currency} {p_hist_median:.2f} = +{hist_pct:.1f}%"
+                                    },
+                                    "status": "open"
+                                })
 
         return {
             "amount_at_risk": float(total_amount_at_risk),
+            "unconfirmed_amount_at_risk": float(unconfirmed_amount_at_risk),
             "currency": currency,
             "matched_lines_count": matched_count,
             "ambiguous_lines_count": ambiguous_count,
